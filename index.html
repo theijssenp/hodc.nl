@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HODC.nl</title>
+<style>
+/* ═══════════════════════════════════════════════
+   HODC — Ubuntu/GNOME Desktop met Window Manager
+   ═══════════════════════════════════════════════ */
+:root {
+  --ubuntu-orange: #E95420;
+  --ubuntu-aubergine: #2C001E;
+  --gnome-dark: #1d1d1d;
+  --gnome-border: rgba(255,255,255,0.08);
+  --gnome-hover: rgba(255,255,255,0.06);
+  --dock-bg: rgba(29,29,29,0.92);
+  --topbar-bg: rgba(29,29,29,0.95);
+  --text: #e8e8e8;
+  --dim: #8b8b8b;
+  --green: #4CAF50;
+  --window-bg: #2d2d2d;
+  --window-header: #383838;
+  --window-border: rgba(255,255,255,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Segoe UI','Ubuntu',-apple-system,BlinkMacSystemFont,sans-serif;
+  background: var(--ubuntu-aubergine);
+  color: var(--text);
+  position: relative;
+}
+
+/* ── Wallpaper ── */
+.wallpaper {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(233,84,32,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 80%, rgba(119,33,111,0.3) 0%, transparent 50%),
+    linear-gradient(135deg, #2C001E 0%, #4A0E3A 40%, #1a1a2e 100%);
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: fixed; top:0; left:0; right:0; height:32px;
+  background: var(--topbar-bg); backdrop-filter: blur(20px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 8px 0 0; font-size: 13px;
+  border-bottom: 1px solid var(--gnome-border);
+  -webkit-user-select: none; user-select: none;
+}
+.topbar-activities {
+  padding: 3px 12px; border-radius: 6px; cursor: pointer;
+  font-weight: 500; transition: background 0.15s; margin-left: 6px;
+}
+.topbar-activities:hover { background: var(--gnome-hover); }
+.topbar-center {
+  position: absolute; left:50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600; cursor: pointer; padding: 3px 12px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.topbar-center:hover { background: var(--gnome-hover); }
+.topbar-right { display: flex; align-items: center; gap: 2px; }
+.tb-icon {
+  padding: 4px 6px; border-radius: 6px; cursor: pointer;
+  transition: background 0.15s; display: flex; align-items: center;
+  gap: 4px; font-size: 13px; color: var(--dim);
+}
+.tb-icon:hover { background: var(--gnome-hover); color: var(--text); }
+.tb-icon svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* ── Dock ── */
+.dock {
+  position: fixed; top:32px; left:0; bottom:0; width:64px;
+  background: var(--dock-bg); backdrop-filter: blur(20px);
+  z-index: 900;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0; gap: 4px;
+  border-right: 1px solid var(--gnome-border);
+  -webkit-user-select: none; user-select: none;
+  overflow-y: auto; scrollbar-width: none;
+}
+.dock::-webkit-scrollbar { display: none; }
+
+.dock-item {
+  position: relative; width: 48px; height: 48px;
+  border-radius: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s cubic-bezier(0.2,0.8,0.2,1);
+  text-decoration: none; color: var(--text);
+  background: transparent;
+}
+.dock-item:hover { background: rgba(255,255,255,0.08); transform: scale(1.08); }
+.dock-item:active { transform: scale(0.95); }
+.dock-icon {
+  font-size: 28px; line-height: 1;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+}
+/* Running indicator */
+.dock-item .dot-indicator {
+  position: absolute; left: -6px; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 6px; border-radius: 0 2px 2px 0;
+  background: var(--ubuntu-orange); opacity: 0;
+  transition: all 0.2s;
+}
+.dock-item.running .dot-indicator { opacity: 0.5; height: 8px; }
+.dock-item.running:hover .dot-indicator { opacity: 1; height: 18px; }
+
+/* Tooltip */
+.dock-tooltip {
+  position: absolute; left: 58px; top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,0.9); color: var(--text);
+  padding: 6px 12px; border-radius: 8px; font-size: 13px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 2000;
+}
+.dock-tooltip::before {
+  content: ''; position: absolute; left: -4px; top: 50%; transform: translateY(-50%);
+  border: 4px solid transparent; border-right-color: rgba(0,0,0,0.9);
+}
+.dock-item:hover .dock-tooltip { opacity: 1; }
+
+.dock-sep { width: 32px; height: 1px; background: var(--gnome-border); margin: 4px 0; }
+
+/* ── Desktop ── */
+.desktop {
+  position: fixed; top: 32px; left: 64px; right: 0; bottom: 0;
+  z-index: 1; overflow: hidden;
+}
+
+/* ── Desktop icons (right side) ── */
+.desktop-icons {
+  position: absolute; top: 16px; right: 16px; z-index: 2;
+  display: flex; flex-direction: column; gap: 16px;
+  -webkit-user-select: none; user-select: none;
+}
+.dt-icon {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; text-decoration: none; color: var(--text);
+  padding: 8px 12px; border-radius: 8px; transition: background 0.15s;
+  width: 80px; text-align: center;
+}
+.dt-icon:hover { background: rgba(255,255,255,0.06); }
+.dt-icon .icon { font-size: 36px; line-height: 1; }
+.dt-icon .label { font-size: 0.7rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+/* ── Welcome widget ── */
+.welcome {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(45,45,45,0.85); backdrop-filter: blur(12px);
+  border: 1px solid var(--gnome-border); border-radius: 16px;
+  padding: 28px 36px; max-width: 480px; text-align: center;
+  animation: fadeUp 0.4s ease-out; z-index: 3;
+}
+.welcome h1 {
+  font-size: 1.6rem; font-weight: 600; margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--ubuntu-orange), #f0a060);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.welcome p { font-size: 0.9rem; color: var(--dim); line-height: 1.6; }
+.welcome .hint {
+  margin-top: 14px; font-size: 0.8rem; color: var(--ubuntu-orange);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.welcome.hidden { display: none; }
+
+/* ═══ Window Manager ═══ */
+.win {
+  position: absolute;
+  background: var(--window-bg);
+  border: 1px solid var(--window-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+  display: flex; flex-direction: column;
+  animation: winOpen 0.3s cubic-bezier(0.2,0.8,0.2,1);
+  z-index: 100;
+}
+@keyframes winOpen {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes winClose {
+  to { opacity: 0; transform: scale(0.9) translateY(10px); }
+}
+.win.closing { animation: winClose 0.2s ease-in forwards; }
+
+.win-header {
+  background: var(--window-header);
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--gnome-border);
+  -webkit-user-select: none; user-select: none;
+  cursor: grab; flex-shrink: 0;
+}
+.win-header:active { cursor: grabbing; }
+.win-controls { display: flex; gap: 8px; flex-shrink: 0; }
+.win-btn {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: rgba(0,0,0,0.5); font-weight: 700;
+  opacity: 0.7;
+}
+.win-btn.close { background: #ff5f57; }
+.win-btn.min { background: #ffbd2e; }
+.win-btn.max { background: #28c941; }
+.win-btn:hover { opacity: 1; }
+.win-title {
+  font-size: 13px; font-weight: 500; color: var(--dim);
+  flex: 1; text-align: center; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.win-spacer { width: 56px; flex-shrink: 0; }
+
+.win-body { flex: 1; overflow: hidden; position: relative; background: #fff; }
+.win-body iframe { width: 100%; height: 100%; border: none; display: block; }
+
+/* Loading overlay */
+.win-loading {
+  position: absolute; inset: 0; background: #2d2d2d;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5; transition: opacity 0.3s;
+}
+.win-loading.hidden { opacity: 0; pointer-events: none; }
+.win-loading .spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--ubuntu-orange);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Minimized window */
+.win.minimized {
+  animation: winMin 0.25s ease-in forwards;
+  pointer-events: none;
+}
+@keyframes winMin {
+  to { opacity: 0; transform: scale(0.3) translateX(-200px) translateY(400px); }
+}
+
+/* Maximized */
+.win.maximized {
+  top: 0 !important; left: 0 !important;
+  width: 100% !important; height: 100% !important;
+  border-radius: 0; border: none;
+}
+.win.maximized .win-header { cursor: default; }
+
+/* ── Taskbar indicators (bottom of dock for open windows) ── */
+.dock-item.active-window .dot-indicator {
+  opacity: 1; height: 18px; background: var(--ubuntu-orange);
+  box-shadow: 0 0 6px var(--ubuntu-orange);
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 15px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .dock { width: 56px; }
+  .dock-item { width: 44px; height: 44px; }
+  .dock-icon { font-size: 24px; }
+  .desktop { left: 56px; }
+  .desktop-icons { display: none; }
+  .welcome { padding: 20px 24px; max-width: 320px; }
+  .welcome h1 { font-size: 1.3rem; }
+}
+
+/* ═══ Context Menu ═══ */
+.ctx-menu {
+  position: fixed;
+  background: rgba(38,38,38,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 6px 0;
+  min-width: 200px;
+  z-index: 5000;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  animation: ctxOpen 0.12s ease-out;
+  -webkit-user-select: none; user-select: none;
+}
+@keyframes ctxOpen {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.ctx-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; cursor: pointer;
+  font-size: 13px; color: var(--text);
+  transition: background 0.1s;
+}
+.ctx-item:hover { background: rgba(255,255,255,0.08); }
+.ctx-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.ctx-label { flex: 1; }
+.ctx-shortcut { font-size: 11px; color: var(--dim); }
+.ctx-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 8px; }
+.ctx-item.disabled { opacity: 0.4; cursor: default; }
+.ctx-item.disabled:hover { background: transparent; }
+
+/* ═══ Calendar popup ═══ */
+.cal-popup {
+  position: fixed;
+  background: rgba(38,38,38,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 20px;
+  z-index: 5000;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.6);
+  animation: calOpen 0.18s cubic-bezier(0.2,0.8,0.2,1);
+  width: 320px;
+  -webkit-user-select: none; user-select: none;
+}
+@keyframes calOpen {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+.cal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.cal-nav {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: none; background: rgba(255,255,255,0.06);
+  color: var(--text); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.cal-nav:hover { background: rgba(255,255,255,0.12); }
+.cal-nav:active { transform: scale(0.92); }
+.cal-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  text-align: center; flex: 1;
+}
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.cal-dow {
+  font-size: 11px; color: var(--dim); text-align: center;
+  padding: 6px 0; font-weight: 500; text-transform: uppercase;
+}
+.cal-day {
+  font-size: 13px; color: var(--text); text-align: center;
+  padding: 8px 0; border-radius: 8px; cursor: pointer;
+  transition: background 0.1s; position: relative;
+}
+.cal-day:hover { background: rgba(255,255,255,0.08); }
+.cal-day.other { color: rgba(255,255,255,0.2); }
+.cal-day.today {
+  background: var(--ubuntu-orange); color: #fff; font-weight: 600;
+  box-shadow: 0 0 8px rgba(233,84,32,0.4);
+}
+.cal-day.today:hover { background: #f0653a; }
+.cal-day.weekend { color: var(--dim); }
+.cal-day.weekend:hover { color: var(--text); }
+.cal-day.other.weekend { color: rgba(255,255,255,0.12); }
+.cal-footer {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  text-align: center; font-size: 12px; color: var(--dim);
+}
+
+/* ═══ WiFi popup ═══ */
+.wifi-popup {
+  position: fixed;
+  background: rgba(38,38,38,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 0 8px;
+  z-index: 5000;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.6);
+  animation: wifiOpen 0.18s cubic-bezier(0.2,0.8,0.2,1);
+  width: 300px;
+  -webkit-user-select: none; user-select: none;
+}
+@keyframes wifiOpen {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.wifi-header {
+  font-size: 11px; color: var(--dim); text-transform: uppercase;
+  letter-spacing: 2px; font-weight: 600; padding: 0 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.wifi-list { padding: 4px 0; }
+.wifi-network {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; cursor: pointer;
+  transition: background 0.1s; position: relative;
+}
+.wifi-network:hover { background: rgba(255,255,255,0.06); }
+.wifi-network.connected { background: rgba(233,84,32,0.08); }
+.wifi-bars {
+  width: 20px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: flex-end; justify-content: center; gap: 2px;
+}
+.wifi-bar {
+  width: 3px; border-radius: 1px; background: var(--text);
+  opacity: 0.3;
+}
+.wifi-bar.active { opacity: 1; }
+.wifi-bar:nth-child(1) { height: 25%; }
+.wifi-bar:nth-child(2) { height: 50%; }
+.wifi-bar:nth-child(3) { height: 75%; }
+.wifi-bar:nth-child(4) { height: 100%; }
+.wifi-info { flex: 1; min-width: 0; }
+.wifi-name {
+  font-size: 13px; color: var(--text); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wifi-status {
+  font-size: 11px; color: var(--dim); margin-top: 1px;
+}
+.wifi-lock {
+  font-size: 12px; color: var(--dim); flex-shrink: 0;
+}
+.wifi-connected-badge {
+  font-size: 10px; color: var(--ubuntu-orange); font-weight: 600;
+  flex-shrink: 0; text-transform: uppercase; letter-spacing: 1px;
+}
+.wifi-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 16px; }
+.wifi-action {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer; font-size: 13px; color: var(--text);
+  transition: background 0.1s;
+}
+.wifi-action:hover { background: rgba(255,255,255,0.06); }
+.wifi-action-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+.wifi-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.wifi-toggle-label { font-size: 13px; color: var(--text); font-weight: 500; }
+.wifi-switch {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: rgba(255,255,255,0.15); position: relative;
+  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.wifi-switch.on { background: var(--ubuntu-orange); }
+.wifi-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  transition: transform 0.2s;
+}
+.wifi-switch.on::after { transform: translateX(16px); }
+
+/* ═══ Power menu ═══ */
+.power-popup {
+  position: fixed;
+  background: rgba(38,38,38,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 8px 0;
+  z-index: 5000;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.6);
+  animation: wifiOpen 0.18s cubic-bezier(0.2,0.8,0.2,1);
+  width: 220px;
+  -webkit-user-select: none; user-select: none;
+}
+.power-header {
+  font-size: 11px; color: var(--dim); text-transform: uppercase;
+  letter-spacing: 2px; font-weight: 600; padding: 4px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.power-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; cursor: pointer;
+  font-size: 13px; color: var(--text);
+  transition: background 0.1s;
+}
+.power-item:hover { background: rgba(255,255,255,0.06); }
+.power-item-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.power-item.danger { color: #ff6b6b; }
+.power-item.danger:hover { background: rgba(255,107,107,0.08); }
+
+/* ═══ Reboot / Boot sequence ═══ */
+.boot-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: #000;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
+  color: #c0c0c0; font-size: 14px; line-height: 1.6;
+  overflow: hidden;
+}
+
+/* CRT power-off effect */
+.crt-off {
+  animation: crtOff 0.6s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+@keyframes crtOff {
+  0% { transform: scaleY(1); filter: brightness(1); }
+  40% { transform: scaleY(0.012); filter: brightness(3); }
+  70% { transform: scaleY(0.012) scaleX(0); filter: brightness(5); opacity: 1; }
+  100% { transform: scaleY(0.012) scaleX(0); opacity: 0; }
+}
+
+/* CRT power-on effect */
+.crt-on {
+  animation: crtOn 0.8s cubic-bezier(0.2,0.8,0.2,1) forwards;
+}
+@keyframes crtOn {
+  0% { transform: scaleY(0.012) scaleX(0); opacity: 0; filter: brightness(5); }
+  30% { transform: scaleY(0.012) scaleX(1); opacity: 1; filter: brightness(4); }
+  60% { transform: scaleY(1) scaleX(1); filter: brightness(2); }
+  100% { transform: scaleY(1) scaleX(1); filter: brightness(1); }
+}
+
+/* BIOS screen */
+.bios {
+  position: fixed; inset: 0; z-index: 99998;
+  background: #000; color: #00ff41;
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
+  font-size: 14px; line-height: 1.7;
+  padding: 40px 60px; white-space: pre;
+  display: none; overflow: hidden;
+  text-shadow: 0 0 4px rgba(0,255,65,0.3);
+}
+.bios-line { opacity: 0; }
+.bios-line.visible { opacity: 1; }
+.bios-line .ok { color: #00ff41; }
+.bios-line .warn { color: #ffcc00; }
+.bios-line .info { color: #00aaff; }
+.bios-line .dim { color: #006600; }
+
+/* Kernel / dmesg */
+.kernel {
+  position: fixed; inset: 0; z-index: 99998;
+  background: #000; color: #00ff41;
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
+  font-size: 13px; line-height: 1.5;
+  padding: 30px 50px; white-space: pre-wrap;
+  display: none; overflow: hidden;
+  text-shadow: 0 0 3px rgba(0,255,65,0.2);
+}
+.kernel-line { opacity: 0; }
+.kernel-line.visible { opacity: 1; }
+
+/* systemd boot */
+.systemd {
+  position: fixed; inset: 0; z-index: 99998;
+  background: #000; color: #00ff41;
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Courier New',monospace;
+  font-size: 14px; line-height: 1.6;
+  padding: 40px 60px; white-space: pre;
+  display: none; overflow: hidden;
+  text-shadow: 0 0 4px rgba(0,255,65,0.3);
+}
+.sd-line { opacity: 0; }
+.sd-line.visible { opacity: 1; }
+.sd-line .ok { color: #00ff41; }
+.sd-line .warn { color: #ffcc00; }
+.sd-line .fail { color: #ff4444; }
+.sd-line .dim { color: #006600; }
+
+/* GRUB */
+.grub {
+  position: fixed; inset: 0; z-index: 99998;
+  background: #000; color: #fff;
+  font-family: 'SF Mono','Fira Code','Courier New',monospace;
+  font-size: 16px; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px;
+}
+.grub-title {
+  font-size: 24px; font-weight: bold; color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+.grub-entry {
+  font-size: 16px; padding: 6px 24px; border-radius: 4px;
+  transition: all 0.2s;
+}
+.grub-entry.selected {
+  background: rgba(233,84,32,0.2);
+  color: var(--ubuntu-orange);
+  text-shadow: 0 0 8px rgba(233,84,32,0.4);
+}
+.grub-timeout {
+  font-size: 12px; color: #888; margin-top: 16px;
+}
+
+/* Ubuntu splash */
+.splash {
+  position: fixed; inset: 0; z-index: 99998;
+  background: #000; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 30px;
+}
+.splash-logo {
+  font-size: 48px; font-weight: 200; letter-spacing: 8px;
+  color: #fff; opacity: 0; animation: splashLogo 1s ease-out 0.2s forwards;
+}
+@keyframes splashLogo {
+  to { opacity: 0.9; }
+}
+.splash-dots {
+  display: flex; gap: 10px; opacity: 0;
+  animation: splashDotsIn 0.5s ease-out 0.8s forwards;
+}
+@keyframes splashDotsIn { to { opacity: 1; } }
+.splash-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ubuntu-orange);
+  animation: splashPulse 1.2s ease-in-out infinite;
+}
+.splash-dot:nth-child(2) { animation-delay: 0.15s; }
+.splash-dot:nth-child(3) { animation-delay: 0.3s; }
+.splash-dot:nth-child(4) { animation-delay: 0.45s; }
+.splash-dot:nth-child(5) { animation-delay: 0.6s; }
+@keyframes splashPulse {
+  0%,100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Fade desktop back in */
+.desktop-fade-in {
+  animation: desktopFadeIn 0.8s ease-out forwards;
+}
+@keyframes desktopFadeIn {
+  from { opacity: 0; transform: scale(1.02); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Desktop fade out before CRT */
+.desktop-fade-out {
+  animation: desktopFadeOut 0.3s ease-in forwards;
+}
+@keyframes desktopFadeOut {
+  to { opacity: 0; transform: scale(0.98); }
+}
+</style>
+</head>
+<body>
+
+<!-- Wallpaper -->
+<div class="wallpaper"></div>
+
+<!-- ═══ Top bar ═══ -->
+<div class="topbar">
+  <div class="topbar-activities" id="activities">Activities</div>
+  <div class="topbar-center" id="clock-btn">
+    <span id="clock">--:--</span>
+    <span style="font-weight:400;color:var(--dim)" id="date"></span>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-icon" id="wifi-btn" title="WiFi">
+      <svg viewBox="0 0 16 16" id="wifi-icon"><path d="M8 12.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM5.2 9.7l1.1 1.1c.4-.4 1-.6 1.7-.6s1.3.2 1.7.6l1.1-1.1c-.7-.7-1.7-1.1-2.8-1.1s-2.1.4-2.8 1.1zM2.4 6.9l1.1 1.1c1.1-1.1 2.8-1.8 4.5-1.8s3.4.7 4.5 1.8l1.1-1.1C12.3 5.4 10.2 4.5 8 4.5s-4.3.9-5.6 2.4zM-.4 4.1L.7 5.2C2.5 3.4 5.1 2.3 8 2.3s5.5 1.1 7.3 2.9l1.1-1.1C14.3 1.9 11.3.7 8 .7S1.7 1.9-.4 4.1z" transform="translate(1 0)"/></svg>
+    </div>
+    <div class="tb-icon" title="Volume">
+      <svg viewBox="0 0 16 16"><path d="M3 6v4h2.5L9 13V3L5.5 6H3zm8 .5c1 0 1.5 1 1.5 2.5S12 11.5 11 11.5M11 4c2 0 3 2 3 4.5s-1 4.5-3 4.5"/></svg>
+    </div>
+    <div class="tb-icon" id="power-btn" title="Systeem">
+      <svg viewBox="0 0 16 16"><path d="M8 2C5.2 2 3 4.2 3 7c0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.8-2.2-5-5-5zm0 1.5c1.9 0 3.5 1.6 3.5 3.5S9.9 10.5 8 10.5 4.5 8.9 4.5 7 6.1 3.5 8 3.5z"/></svg>
+      <span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;box-shadow:0 0 4px var(--green)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Dock ═══ -->
+<nav class="dock" id="dock">
+  <div class="dock-item" data-app="huiskompas" data-url="https://huiskompas.hodc.nl" data-icon="🏠" data-title="HuisKompas">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🏠</div>
+    <div class="dock-tooltip">HuisKompas — Woonkosten calculator</div>
+  </div>
+  <div class="dock-item" data-app="rente" data-url="https://rente.hodc.nl" data-icon="🏦" data-title="Hypotheekrente">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🏦</div>
+    <div class="dock-tooltip">Hypotheekrente — Actuele rentestanden</div>
+  </div>
+  <div class="dock-item" data-app="salaris" data-url="https://salaris.hodc.nl" data-icon="💰" data-title="Salaris">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">💰</div>
+    <div class="dock-tooltip">Salaris — Bruto-netto 2026</div>
+  </div>
+  <div class="dock-item" data-app="boekhouden" data-url="https://boekhouden.hodc.nl" data-icon="📒" data-title="Boekhouden" data-external="true">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">📒</div>
+    <div class="dock-tooltip">Boekhouden — Opent in nieuw venster</div>
+  </div>
+  <div class="dock-sep"></div>
+  <div class="dock-item" data-app="rdw" data-url="https://rdw.hodc.nl" data-icon="🚗" data-title="Kenteken">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🚗</div>
+    <div class="dock-tooltip">Kenteken — RDW voertuiginfo</div>
+  </div>
+  <div class="dock-item" data-app="news" data-url="https://news.hodc.nl" data-icon="📰" data-title="Nieuws">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">📰</div>
+    <div class="dock-tooltip">Nieuws — Dagelijks overzicht</div>
+  </div>
+  <div class="dock-item" data-app="pool" data-url="https://pool.hodc.nl" data-icon="🎱" data-title="Pool Guide">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🎱</div>
+    <div class="dock-tooltip">Pool Guide — Competitie beheer</div>
+  </div>
+  <div class="dock-item" data-app="crypto" data-url="https://hodc.nl/encode_decode.html" data-icon="🔐" data-title="Crypto">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🔐</div>
+    <div class="dock-tooltip">Crypto — Encrypt/decrypt tool</div>
+  </div>
+  <div class="dock-item" data-app="villaayamonte" data-url="https://villaayamonte.hodc.nl" data-icon="🏖️" data-title="Villa Ayamonte">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🏖️</div>
+    <div class="dock-tooltip">Villa Ayamonte — Vakantiehuis</div>
+  </div>
+  <div class="dock-sep"></div>
+  <div class="dock-item" data-app="music" data-url="music" data-icon="🎵" data-title="Muziek">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🎵</div>
+    <div class="dock-tooltip">Muziek — Pieter Theijssen</div>
+  </div>
+</nav>
+
+<!-- ═══ Desktop ═══ -->
+<div class="desktop" id="desktop">
+
+  <!-- Welcome -->
+  <div class="welcome" id="welcome">
+    <h1>HODC Desktop</h1>
+    <p>Pieter's Workspace — Tools, data & muziek.<br>
+    Klik op een icoon in de dock links om een applicatie te openen.</p>
+    <div class="hint"><span>⊞</span> <span>Dock links voor alle tools</span></div>
+  </div>
+
+  <!-- Desktop shortcuts -->
+  <div class="desktop-icons">
+    <div class="dt-icon" onclick="openApp('huiskompas')">
+      <div class="icon">🏠</div><div class="label">HuisKompas</div>
+    </div>
+    <div class="dt-icon" onclick="openApp('news')">
+      <div class="icon">📰</div><div class="label">Nieuws</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── App registry ──
+const apps = {};
+document.querySelectorAll('.dock-item[data-app]').forEach(el => {
+  apps[el.dataset.app] = {
+    url: el.dataset.url,
+    icon: el.dataset.icon,
+    title: el.dataset.title,
+    external: el.dataset.external === 'true',
+    el: el
+  };
+});
+
+// ── Clock ──
+const days = ['zo','ma','di','wo','do','vr','za'];
+const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('date').textContent =
+    days[n.getDay()] + ' ' + n.getDate() + ' ' + months[n.getMonth()];
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── Window Manager ──
+const desktop = document.getElementById('desktop');
+const welcome = document.getElementById('welcome');
+let openWindows = {};
+let zIndex = 100;
+let winCounter = 0;
+
+function openApp(appId) {
+  const app = apps[appId];
+  if (!app) return;
+
+  // External apps open in a new browser tab
+  if (app.external) {
+    window.open(app.url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  // Hide welcome
+  welcome.classList.add('hidden');
+
+  // If already open, focus it
+  if (openWindows[appId]) {
+    focusWindow(appId);
+    return;
+  }
+
+  // Mark dock item as running
+  app.el.classList.add('running');
+
+  // Create window
+  const win = document.createElement('div');
+  win.className = 'win';
+  win.id = 'win-' + appId;
+  winCounter++;
+
+  // Position: cascade
+  const offset = (winCounter % 5) * 30;
+  const w = Math.min(900, desktop.clientWidth - 40);
+  const h = Math.min(620, desktop.clientHeight - 40);
+  const left = 30 + offset;
+  const top = 20 + offset;
+  win.style.left = left + 'px';
+  win.style.top = top + 'px';
+  win.style.width = w + 'px';
+  win.style.height = h + 'px';
+  win.style.zIndex = ++zIndex;
+
+  // Music window is special
+  if (appId === 'music') {
+    win.style.width = '440px';
+    win.style.height = 'auto';
+    win.style.minHeight = '200px';
+    win.innerHTML = `
+      <div class="win-header">
+        <div class="win-controls">
+          <button class="win-btn close" onclick="closeWin('music')"></button>
+          <button class="win-btn min" onclick="minWin('music')"></button>
+          <button class="win-btn max" onclick="maxWin('music')"></button>
+        </div>
+        <div class="win-title">🎵 Muziek — Pieter Theijssen</div>
+        <div class="win-spacer"></div>
+      </div>
+      <div class="win-body" style="background:#2d2d2d;padding:16px 20px">
+        <div class="track" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+          <div style="flex:0 0 160px"><div style="font-size:0.85rem;font-weight:500">COVID Cure</div><div style="font-size:0.7rem;color:var(--dim);margin-top:2px">Pieter Theijssen</div></div>
+          <audio src="/COVID_Cure_by_Pieter_Theijssen.mp3" controls preload="none" style="flex:1;height:32px;filter:invert(1) hue-rotate(180deg) sepia(0.15) brightness(0.9)"></audio>
+        </div>
+        <div class="track" style="display:flex;align-items:center;gap:14px;padding:10px 0">
+          <div style="flex:0 0 160px"><div style="font-size:0.85rem;font-weight:500">Tingle</div><div style="font-size:0.7rem;color:var(--dim);margin-top:2px">Pieter Theijssen</div></div>
+          <audio src="/Tingle.mp3" controls preload="none" style="flex:1;height:32px;filter:invert(1) hue-rotate(180deg) sepia(0.15) brightness(0.9)"></audio>
+        </div>
+      </div>
+    `;
+  } else {
+    // iframe window
+    win.innerHTML = `
+      <div class="win-header">
+        <div class="win-controls">
+          <button class="win-btn close" onclick="closeWin('${appId}')"></button>
+          <button class="win-btn min" onclick="minWin('${appId}')"></button>
+          <button class="win-btn max" onclick="maxWin('${appId}')"></button>
+        </div>
+        <div class="win-title">${app.icon} ${app.title}</div>
+        <div class="win-spacer"></div>
+      </div>
+      <div class="win-body">
+        <div class="win-loading"><div class="spinner"></div></div>
+        <iframe src="${app.url}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" loading="lazy"></iframe>
+      </div>
+    `;
+
+    // Hide loading when iframe loads
+    const iframe = win.querySelector('iframe');
+    const loading = win.querySelector('.win-loading');
+    iframe.addEventListener('load', () => loading.classList.add('hidden'));
+    // Fallback: hide after 5s
+    setTimeout(() => loading.classList.add('hidden'), 5000);
+  }
+
+  // Drag functionality
+  makeDraggable(win);
+
+  // Focus on click
+  win.addEventListener('mousedown', () => focusWindow(appId));
+
+  desktop.appendChild(win);
+  openWindows[appId] = { el: win, minimized: false, maximized: false, prevRect: null };
+  focusWindow(appId);
+}
+
+function focusWindow(appId) {
+  const w = openWindows[appId];
+  if (!w) return;
+  if (w.minimized) {
+    w.el.classList.remove('minimized');
+    w.minimized = false;
+  }
+  w.el.style.zIndex = ++zIndex;
+
+  // Update dock active state
+  document.querySelectorAll('.dock-item').forEach(d => d.classList.remove('active-window'));
+  if (apps[appId]) apps[appId].el.classList.add('active-window');
+}
+
+function closeWin(appId) {
+  const w = openWindows[appId];
+  if (!w) return;
+  w.el.classList.add('closing');
+  if (apps[appId]) apps[appId].el.classList.remove('running', 'active-window');
+  setTimeout(() => {
+    w.el.remove();
+    delete openWindows[appId];
+    // Show welcome if no windows left
+    if (Object.keys(openWindows).length === 0) {
+      welcome.classList.remove('hidden');
+    }
+  }, 200);
+}
+
+function minWin(appId) {
+  const w = openWindows[appId];
+  if (!w) return;
+  w.el.classList.add('minimized');
+  w.minimized = true;
+  if (apps[appId]) apps[appId].el.classList.remove('active-window');
+}
+
+function maxWin(appId) {
+  const w = openWindows[appId];
+  if (!w) return;
+  if (w.maximized) {
+    // Restore
+    w.el.classList.remove('maximized');
+    if (w.prevRect) {
+      w.el.style.left = w.prevRect.left;
+      w.el.style.top = w.prevRect.top;
+      w.el.style.width = w.prevRect.width;
+      w.el.style.height = w.prevRect.height;
+    }
+    w.maximized = false;
+  } else {
+    // Save current rect
+    w.prevRect = {
+      left: w.el.style.left,
+      top: w.el.style.top,
+      width: w.el.style.width,
+      height: w.el.style.height
+    };
+    w.el.classList.add('maximized');
+    w.maximized = true;
+  }
+}
+
+// ── Dragging ──
+function makeDraggable(win) {
+  const header = win.querySelector('.win-header');
+  let isDragging = false;
+  let startX, startY, startLeft, startTop;
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('win-btn')) return;
+    if (win.classList.contains('maximized')) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = parseInt(win.style.left);
+    startTop = parseInt(win.style.top);
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    let newLeft = startLeft + (e.clientX - startX);
+    let newTop = startTop + (e.clientY - startY);
+    // Constrain to desktop
+    const dRect = desktop.getBoundingClientRect();
+    newLeft = Math.max(0, Math.min(newLeft, dRect.width - 80));
+    newTop = Math.max(0, Math.min(newTop, dRect.height - 40));
+    win.style.left = newLeft + 'px';
+    win.style.top = newTop + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      header.style.cursor = 'grab';
+    }
+  });
+
+  // Touch support
+  header.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('win-btn')) return;
+    if (win.classList.contains('maximized')) return;
+    isDragging = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startLeft = parseInt(win.style.left);
+    startTop = parseInt(win.style.top);
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    let newLeft = startLeft + (e.touches[0].clientX - startX);
+    let newTop = startTop + (e.touches[0].clientY - startY);
+    const dRect = desktop.getBoundingClientRect();
+    newLeft = Math.max(0, Math.min(newLeft, dRect.width - 80));
+    newTop = Math.max(0, Math.min(newTop, dRect.height - 40));
+    win.style.left = newLeft + 'px';
+    win.style.top = newTop + 'px';
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => { isDragging = false; });
+}
+
+// ── Dock click handlers ──
+document.querySelectorAll('.dock-item[data-app]').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    openApp(el.dataset.app);
+  });
+});
+
+// ── Activities toggle ──
+document.getElementById('activities').addEventListener('click', function() {
+  // Toggle: show all windows in overview, or restore
+  const wins = Object.values(openWindows);
+  if (wins.length === 0) return;
+  // Simple visual: pulse all dock items
+  document.querySelectorAll('.dock-item').forEach((item, i) => {
+    setTimeout(() => {
+      item.style.transform = 'scale(1.15)';
+      setTimeout(() => item.style.transform = '', 200);
+    }, i * 40);
+  });
+});
+
+// ── Clock click → Calendar popup ──
+let calPopup = null;
+let calDate = new Date();
+
+function closeCalendar() {
+  if (calPopup) { calPopup.remove(); calPopup = null; }
+}
+
+function showCalendar() {
+  closeCalendar();
+  const popup = document.createElement('div');
+  popup.className = 'cal-popup';
+  document.body.appendChild(popup);
+  calPopup = popup;
+  renderCalendar();
+  // Position: centered below the clock button
+  const btn = document.getElementById('clock-btn');
+  const rect = btn.getBoundingClientRect();
+  popup.style.left = (rect.left + rect.width / 2) + 'px';
+  popup.style.top = (rect.bottom + 6) + 'px';
+  // Keep within viewport
+  const pRect = popup.getBoundingClientRect();
+  if (pRect.right > window.innerWidth) {
+    popup.style.left = (window.innerWidth - pRect.width - 8) + 'px';
+  }
+  if (pRect.left < 8) popup.style.left = '8px';
+}
+
+function renderCalendar() {
+  if (!calPopup) return;
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const today = new Date();
+  const isThisMonth = (year === today.getFullYear() && month === today.getMonth());
+  const monthNames = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  const dowNames = ['ma','di','wo','do','vr','za','zo'];
+
+  let html = '<div class="cal-header">';
+  html += '<button class="cal-nav" id="cal-prev">‹</button>';
+  html += '<div class="cal-title">' + monthNames[month] + ' ' + year + '</div>';
+  html += '<button class="cal-nav" id="cal-next">›</button>';
+  html += '</div>';
+  html += '<div class="cal-grid">';
+  // Day-of-week headers (Mon=0)
+  dowNames.forEach(d => { html += '<div class="cal-dow">' + d + '</div>'; });
+
+  // First day of month, adjusted for Monday=0
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay() - 1; // Mon=0
+  if (startDow < 0) startDow = 6; // Sun=6
+
+  // Days in current month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Days in previous month
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  // Previous month trailing days
+  for (let i = startDow - 1; i >= 0; i--) {
+    const dow = (startDow - 1 - i) % 7;
+    const weekend = dow >= 5;
+    html += '<div class="cal-day other' + (weekend ? ' weekend' : '') + '">' + (daysInPrev - i) + '</div>';
+  }
+
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = (startDow + d - 1) % 7;
+    const weekend = dow >= 5;
+    const isToday = isThisMonth && d === today.getDate();
+    let cls = 'cal-day';
+    if (weekend) cls += ' weekend';
+    if (isToday) cls += ' today';
+    html += '<div class="' + cls + '">' + d + '</div>';
+  }
+
+  // Next month leading days to fill grid
+  const totalCells = startDow + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    const dow = (totalCells + d - 1) % 7;
+    const weekend = dow >= 5;
+    html += '<div class="cal-day other' + (weekend ? ' weekend' : '') + '">' + d + '</div>';
+  }
+
+  html += '</div>';
+  html += '<div class="cal-footer">' + days[today.getDay()] + ' ' + today.getDate() + ' ' + monthNames[today.getMonth()] + ' ' + today.getFullYear() + '</div>';
+  calPopup.innerHTML = html;
+
+  // Nav buttons
+  document.getElementById('cal-prev').addEventListener('click', (e) => {
+    e.stopPropagation();
+    calDate.setMonth(calDate.getMonth() - 1);
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', (e) => {
+    e.stopPropagation();
+    calDate.setMonth(calDate.getMonth() + 1);
+    renderCalendar();
+  });
+}
+
+document.getElementById('clock-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (calPopup) {
+    closeCalendar();
+  } else {
+    // Reset to current month each time you open
+    calDate = new Date();
+    showCalendar();
+  }
+});
+
+// Close calendar on outside click or escape
+document.addEventListener('click', (e) => {
+  if (calPopup && !calPopup.contains(e.target) && e.target.id !== 'clock-btn' && !e.target.closest('#clock-btn')) {
+    closeCalendar();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeCalendar();
+    closeContextMenu();
+    closeWifi();
+  }
+});
+
+// ── WiFi popup ──
+let wifiPopup = null;
+let wifiOn = true;
+
+// Network list — based on Pieter's actual wifi profiles
+const wifiNetworks = [
+  { name: 'speedweb', strength: 4, secure: true, connected: true },
+  { name: 'M6E 5GHz', strength: 4, secure: true },
+  { name: 'M6E 2.4GHz', strength: 3, secure: true },
+  { name: 'speednet', strength: 3, secure: true },
+  { name: 'speedweb 1', strength: 2, secure: true },
+  { name: 'speedweb 2', strength: 2, secure: true },
+];
+
+function closeWifi() {
+  if (wifiPopup) { wifiPopup.remove(); wifiPopup = null; }
+}
+
+function showWifi() {
+  closeWifi();
+  const popup = document.createElement('div');
+  popup.className = 'wifi-popup';
+  document.body.appendChild(popup);
+  wifiPopup = popup;
+  renderWifi();
+  // Position below the wifi icon
+  const btn = document.getElementById('wifi-btn');
+  const rect = btn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 6) + 'px';
+  // Align right edge of popup with right side of icon
+  let left = rect.right - 300 + 16;
+  if (left < 8) left = 8;
+  popup.style.left = left + 'px';
+}
+
+function renderWifi() {
+  if (!wifiPopup) return;
+  let html = '<div class="wifi-header">WiFi-netwerken</div>';
+
+  if (!wifiOn) {
+    html += '<div style="padding:24px 16px;text-align:center;color:var(--dim);font-size:13px">WiFi is uitgeschakeld</div>';
+  } else {
+    html += '<div class="wifi-list">';
+    wifiNetworks.forEach((net, i) => {
+      let bars = '';
+      for (let b = 1; b <= 4; b++) {
+        bars += '<div class="wifi-bar' + (b <= net.strength ? ' active' : '') + '"></div>';
+      }
+      const connected = net.connected ? ' connected' : '';
+      const badge = net.connected ? '<span class="wifi-connected-badge">●</span>' : '';
+      const lock = net.secure ? '<span class="wifi-lock">🔒</span>' : '';
+      const status = net.connected ? 'Verbonden' : (net.strength >= 3 ? 'Goed signaal' : 'Zwak signaal');
+      html += `<div class="wifi-network${connected}" data-idx="${i}">`;
+      html += `<div class="wifi-bars">${bars}</div>`;
+      html += `<div class="wifi-info"><div class="wifi-name">${net.name}</div><div class="wifi-status">${status}</div></div>`;
+      html += lock + badge;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Separator + actions
+  html += '<div class="wifi-sep"></div>';
+  html += '<div class="wifi-action" id="wifi-settings"><span class="wifi-action-icon">⚙️</span> Netwerkinstellingen</div>';
+  html += '<div class="wifi-action" id="wifi-refresh"><span class="wifi-action-icon">↻</span> Netwerken vernieuwen</div>';
+
+  // Toggle
+  html += '<div class="wifi-toggle">';
+  html += '<span class="wifi-toggle-label">WiFi</span>';
+  html += `<div class="wifi-switch${wifiOn ? ' on' : ''}" id="wifi-switch"></div>`;
+  html += '</div>';
+
+  wifiPopup.innerHTML = html;
+
+  // Toggle handler
+  document.getElementById('wifi-switch').addEventListener('click', (e) => {
+    e.stopPropagation();
+    wifiOn = !wifiOn;
+    renderWifi();
+    // Update icon
+    const icon = document.getElementById('wifi-icon');
+    icon.style.opacity = wifiOn ? '1' : '0.3';
+  });
+
+  // Network click — simulate connecting
+  wifiPopup.querySelectorAll('.wifi-network').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(el.dataset.idx);
+      wifiNetworks.forEach(n => n.connected = false);
+      wifiNetworks[idx].connected = true;
+      renderWifi();
+    });
+  });
+
+  // Refresh — reshuffle signal strengths slightly
+  document.getElementById('wifi-refresh').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Animate refresh
+    wifiPopup.style.opacity = '0.5';
+    setTimeout(() => {
+      wifiNetworks.forEach(n => {
+        if (!n.connected) n.strength = 2 + Math.floor(Math.random() * 3);
+      });
+      wifiPopup.style.opacity = '1';
+      renderWifi();
+    }, 400);
+  });
+
+  // Settings — just visual feedback
+  document.getElementById('wifi-settings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeWifi();
+  });
+}
+
+document.getElementById('wifi-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (wifiPopup) {
+    closeWifi();
+  } else {
+    showWifi();
+  }
+});
+
+// Close wifi on outside click
+document.addEventListener('click', (e) => {
+  if (wifiPopup && !wifiPopup.contains(e.target) && e.target.id !== 'wifi-btn' && !e.target.closest('#wifi-btn')) {
+    closeWifi();
+  }
+  if (powerPopup && !powerPopup.contains(e.target) && e.target.id !== 'power-btn' && !e.target.closest('#power-btn')) {
+    closePower();
+  }
+});
+
+// ── Power menu ──
+let powerPopup = null;
+
+function closePower() {
+  if (powerPopup) { powerPopup.remove(); powerPopup = null; }
+}
+
+function showPower() {
+  closePower();
+  closeWifi();
+  closeCalendar();
+  closeContextMenu();
+  const popup = document.createElement('div');
+  popup.className = 'power-popup';
+  popup.innerHTML = `
+    <div class="power-header">Systeem</div>
+    <div class="power-item" id="pw-lock"><span class="power-item-icon">🔒</span> Vergrendelen</div>
+    <div class="power-item" id="pw-suspend"><span class="power-item-icon">🌙</span> Slaapstand</div>
+    <div class="power-item" id="pw-reboot"><span class="power-item-icon">↻</span> Herstarten</div>
+    <div class="power-item danger" id="pw-shutdown"><span class="power-item-icon">⏻</span> Afsluiten</div>
+  `;
+  document.body.appendChild(popup);
+  powerPopup = popup;
+
+  // Position below the power icon
+  const btn = document.getElementById('power-btn');
+  const rect = btn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 6) + 'px';
+  let left = rect.right - 220 + 16;
+  if (left < 8) left = 8;
+  popup.style.left = left + 'px';
+
+  // Handlers
+  document.getElementById('pw-lock').addEventListener('click', () => { closePower(); lockScreen(); });
+  document.getElementById('pw-suspend').addEventListener('click', () => { closePower(); suspendScreen(); });
+  document.getElementById('pw-reboot').addEventListener('click', () => { closePower(); doReboot(); });
+  document.getElementById('pw-shutdown').addEventListener('click', () => { closePower(); doShutdown(); });
+}
+
+document.getElementById('power-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (powerPopup) closePower(); else showPower();
+});
+
+// ── Lock screen ──
+function lockScreen() {
+  const overlay = document.createElement('div');
+  overlay.className = 'boot-overlay';
+  overlay.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
+  overlay.innerHTML = `
+    <div style="font-size:64px;margin-bottom:20px;opacity:0.3">🔒</div>
+    <div style="font-size:18px;color:#888;margin-bottom:8px">Vergrendeld</div>
+    <div style="font-size:14px;color:#555">Klik om te ontgrendelen</div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', () => {
+    overlay.style.transition = 'opacity 0.4s';
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 400);
+  });
+}
+
+// ── Suspend ──
+function suspendScreen() {
+  const overlay = document.createElement('div');
+  overlay.className = 'boot-overlay';
+  overlay.style.background = '#000';
+  overlay.style.cursor = 'pointer';
+  overlay.innerHTML = `<div style="font-size:14px;color:#333">Slaapstand — klik om te ontwaken</div>`;
+  document.body.appendChild(overlay);
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.6s';
+  requestAnimationFrame(() => overlay.style.opacity = '1');
+  overlay.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 600);
+  });
+}
+
+// ── Reboot sequence ──
+function doReboot() {
+  // Phase 1: Close all open windows
+  Object.keys(openWindows).forEach(id => closeWin(id));
+  closeCalendar(); closeWifi(); closePower(); closeContextMenu();
+  welcome.classList.add('hidden');
+
+  // Phase 2: Fade desktop out
+  const wrap = document.querySelector('.wallpaper');
+  const topbar = document.querySelector('.topbar');
+  const dock = document.querySelector('.dock');
+  const desktop = document.getElementById('desktop');
+  [topbar, dock, desktop, wrap].forEach(el => {
+    el.style.transition = 'opacity 0.3s ease-in';
+    el.style.opacity = '0';
+  });
+
+  setTimeout(() => {
+    // Phase 3: CRT power-off effect
+    const crt = document.createElement('div');
+    crt.className = 'boot-overlay crt-off';
+    crt.style.background = 'transparent';
+    // Snapshot the current desktop as a fake screen
+    crt.innerHTML = '';
+    document.body.appendChild(crt);
+    // Apply CRT-off to the whole page content
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      crt.remove();
+      // Phase 4: Black screen, then BIOS
+      showBIOS();
+    }, 700);
+  }, 350);
+}
+
+function showBIOS() {
+  const bios = document.createElement('div');
+  bios.className = 'bios';
+  bios.style.display = 'block';
+
+  const lines = [
+    'HODC BIOS v2.4.1 — Built 2026',
+    'Copyright (C) 2026 Pieter Theijssen, Groningen',
+    '',
+    'CPU: AMD Ryzen 5 5600X @ 3.7GHz (6 cores / 12 threads)',
+    'Memory Test: 16384MB DDR4-3600 ...... OK',
+    'Memory Test: 32768MB DDR4-3600 ...... OK',
+    'Memory Test: 49152MB total .......... OK',
+    '',
+    'Detecting storage devices ...',
+    '  NVMe 0: HODC-NVMe-1TB (Samsung 980 PRO) ... OK',
+    '  NVMe 1: HODC-NVMe-2TB (WD Black SN850) ... OK',
+    '  SATA 0: None',
+    '  SATA 1: None',
+    '',
+    'Detecting USB devices ...',
+    '  Port 1: USB Keyboard (Logitech G915) .. OK',
+    '  Port 2: USB Mouse (Logitech G502) ..... OK',
+    '  Port 3: USB Hub (7 ports) ............. OK',
+    '  Port 4: USB Audio (Focusrite Solo) .... OK',
+    '',
+    'Detecting network interfaces ...',
+    '  eth0: Intel I225-V',
+    '    MAC: 00:1A:2B:3C:4D:5E',
+    '    Link: UP @ 2500 Mbps full-duplex',
+    '    DHCP: 192.168.1.42 ................. OK',
+    '  wlan0: Intel AX200',
+    '    MAC: 00:1A:2B:3C:4D:5F',
+    '    SSID: speedweb',
+    '    Signal: -42 dBm (excellent)',
+    '',
+    'Initializing PCI devices ...',
+    '  VGA:  NVIDIA GeForce RTX 3060 12GB .. OK',
+    '  Audio: Realtek ALC892 (8-channel) ... OK',
+    '  NVMe: Samsung 980 PRO controller ..... OK',
+    '  USB:  AMD USB 3.2 Controller ......... OK',
+    '',
+    'BIOS configuration:',
+    '  Boot mode: UEFI',
+    '  Secure Boot: Disabled',
+    '  Virtualization: AMD-V enabled',
+    '  TPM: 2.0 (AMD fTPM)',
+    '',
+    'All devices initialized successfully.',
+    '',
+    'Press DEL for SETUP · F11 for Boot Menu · F12 for Network Boot',
+    '',
+    'Booting from HODC-NVMe-1TB...',
+  ];
+
+  lines.forEach((line) => {
+    const div = document.createElement('div');
+    div.className = 'bios-line';
+    // Highlight OK lines
+    if (line.includes('OK')) {
+      div.innerHTML = line.replace(/OK/g, '<span class="ok">OK</span>');
+    } else if (line.includes('Press') || line.includes('Booting')) {
+      div.innerHTML = '<span class="dim">' + line + '</span>';
+    } else {
+      div.textContent = line;
+    }
+    bios.appendChild(div);
+  });
+
+  document.body.appendChild(bios);
+
+  const lineEls = bios.querySelectorAll('.bios-line');
+  let lineIdx = 0;
+  function revealLine() {
+    if (lineIdx < lineEls.length) {
+      lineEls[lineIdx].classList.add('visible');
+      lineIdx++;
+      setTimeout(revealLine, 50 + Math.random() * 60);
+    } else {
+      setTimeout(() => {
+        bios.style.transition = 'opacity 0.3s';
+        bios.style.opacity = '0';
+        setTimeout(() => {
+          bios.remove();
+          showGRUB();
+        }, 300);
+      }, 1000);
+    }
+  }
+  revealLine();
+}
+
+function showGRUB() {
+  const grub = document.createElement('div');
+  grub.className = 'grub';
+  grub.style.display = 'flex';
+  grub.innerHTML = `
+    <div class="grub-title">GNU GRUB version 2.12</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px">
+      <div class="grub-entry selected">▸ HODC Desktop (kernel 6.8.0-27)</div>
+      <div class="grub-entry">&nbsp; HODC Desktop (recovery mode)</div>
+      <div class="grub-entry">&nbsp; Memory test (memtest86+)</div>
+    </div>
+    <div class="grub-timeout" id="grub-timeout">Automatisch opstarten over 3 seconden...</div>
+  `;
+  document.body.appendChild(grub);
+
+  let countdown = 3;
+  const timeoutEl = grub.querySelector('#grub-timeout');
+  const timer = setInterval(() => {
+    countdown--;
+    if (countdown > 0) {
+      timeoutEl.textContent = 'Automatisch opstarten over ' + countdown + ' seconden...';
+    } else {
+      clearInterval(timer);
+      grub.style.transition = 'opacity 0.3s';
+      grub.style.opacity = '0';
+      setTimeout(() => {
+        grub.remove();
+        showKernel();
+      }, 300);
+    }
+  }, 1000);
+}
+
+// ── Kernel boot (dmesg-style) ──
+function showKernel() {
+  const kernel = document.createElement('div');
+  kernel.className = 'kernel';
+  kernel.style.display = 'block';
+
+  const lines = [
+    '[    0.000000] Linux version 6.8.0-27-generic (buildd@hodc) (gcc 13.2.0) #1 SMP PREEMPT_DYNAMIC',
+    '[    0.000000] Command line: BOOT_IMAGE=/vmlinuz-6.8.0-27-generic root=/dev/nvme0n1p2 ro quiet splash',
+    '[    0.000000] Kernel-supported CPU: x86_64 (AMD Ryzen 5 5600X)',
+    '[    0.000000] BIOS-provided physical RAM map:',
+    '[    0.000000]   usable: 0x000000 - 0x0C000000 (3072MB)',
+    '[    0.000000]   usable: 0x1000000 - 0x3BFF00000 (15360MB)',
+    '[    0.000000]   usable: 0x3C0000000 - 0x7BFF00000 (16384MB)',
+    '[    0.000000] Memory: 49152MB available / 49152MB total',
+    '[    0.000000] Reserving 256MB for crashkernel',
+    '[    0.001234] ACPI: PM-Timer IO Port: 0x408',
+    '[    0.002345] smpboot: Allowing 12 CPUs, 6 cores / 12 threads',
+    '[    0.003456] CPU0: AMD Ryzen 5 5600X 6-Core Processor [MHz 3700 / Max 4650]',
+    '[    0.004567] CPU1: AMD Ryzen 5 5600X 6-Core Processor',
+    '[    0.005678] CPU2: AMD Ryzen 5 5600X 6-Core Processor',
+    '[    0.006789] CPU3: AMD Ryzen 5 5600X 6-Core Processor',
+    '[    0.007890] CPU4: AMD Ryzen 5 5600X 6-Core Processor',
+    '[    0.008901] CPU5: AMD Ryzen 5 5600X 6-Core Processor',
+    '[    0.010234] MCE: Machine Check Exception bank 0 initialized',
+    '[    0.012345] PCI: Using configuration type 1 for base access',
+    '[    0.015678] PCI: MMCONFIG for domain 0000 [bus 00-ff] at [mem 0xe0000000-0xefffffff]',
+    '[    0.020000] PCI: 00:01.0 PCI bridge to [bus 01]',
+    '[    0.022000] PCI: 00:02.0 VGA compatible controller: NVIDIA GA106 [GeForce RTX 3060]',
+    '[    0.025000] PCI: 00:08.0 Network controller: Intel Wi-Fi 6 AX200',
+    '[    0.028000] PCI: 00:14.0 USB controller: AMD FCH USB XHCI Controller',
+    '[    0.030000] PCI: 00:1b.0 Audio device: Realtek ALC892',
+    '[    0.035000] NVMe controller initialized: Samsung 980 PRO 1TB',
+    '[    0.040000] NVMe controller initialized: WD Black SN850 2TB',
+    '[    0.045000] scsi host0: nvme0n1 (Samsung 980 PRO)',
+    '[    0.048000] scsi host1: nvme1n1 (WD Black SN850)',
+    '[    0.052000] nvme nvme0: 1TB namespace allocated (nsid=1)',
+    '[    0.055000] nvme nvme1: 2TB namespace allocated (nsid=1)',
+    '[    0.060000] Block layer: bio-based queue initialized for nvme0n1',
+    '[    0.065000] Block layer: bio-based queue initialized for nvme1n1',
+    '[    0.070000] EXT4-fs (nvme0n1p2): mounted filesystem with ordered data mode',
+    '[    0.075000] ZFS: Loaded module v2.2.4-1ubuntu1',
+    '[    0.080000] ZFS: 2 pools available, 0 imported',
+    '[    0.085000] random: crng init done',
+    '[    0.090000] clocksource: tsc-early: mask verified',
+    '[    0.095000] Intel I225-V eth0: Link is up at 2500 Mbps',
+    '[    0.100000] Intel AX200 wlan0: Firmware loaded (version 72.659640.0)',
+    '[    0.105000] Logitech G915: USB HID keyboard registered',
+    '[    0.110000] Logitech G502: USB HID mouse registered',
+    '[    0.115000] Focusrite Solo: USB Audio device registered',
+    '[    0.120000] snd_hda_intel: Realtek ALC892 codec initialized',
+    '[    0.125000] nvidia: module loaded (version 550.120)',
+    '[    0.130000] nvidia-drm: loading kernel module',
+    '[    0.135000] [drm] Initialized nvidia-drm 550.120 for NVIDIA GA106',
+    '[    0.140000] [drm] HDMI-A-1: connected (1920x1080@60Hz)',
+    '[    0.145000] [drm] DP-1: connected (2560x1440@144Hz)',
+    '[    0.150000] fbcon: Deferred console takeover',
+    '[    0.155000] systemd[1]: System Management Mode initialized',
+    '[    0.160000] NET: Registered PF_INET protocol family',
+    '[    0.165000] NET: Registered PF_INET6 protocol family',
+    '[    0.170000] TCP: cubic registered',
+    '[    0.175000] NET: Registered PF_PACKET protocol family',
+    '[    0.180000] VFS: Disk quotas dquot_6.6.0 registered',
+    '[    0.185000] Key type ._fscrypt registered',
+    '[    0.190000] AppArmor: AppArmor initialized',
+    '[    0.195000] Key type encrypted registered',
+    '[    0.200000] Loading iSCSI Transport Layer v2.0-870',
+    '[    0.210000] Loading XFS filesystem driver',
+    '[    0.220000] Loading Btrfs filesystem driver',
+    '[    0.230000] zswap: loaded using pool lzo/zsmalloc',
+    '[    0.240000] sched_clock: Marking stable (240000000 ns)',
+    '[    0.250000] PM: Running suspend self-tests',
+    '[    0.260000] registered taskstats version 1',
+    '[    0.270000] Loading compiled-in X.509 certificates',
+    '[    0.280000] Loaded UEFI: loaded kernel keys',
+    '[    0.290000] ima: No TPM chip found, activating TPM-bypass!',
+    '[    0.300000] Loading user-specified initrd',
+    '[    0.310000] initrd loaded: /boot/initrd.img-6.8.0-27-generic',
+    '[    0.320000] Freeing unused kernel memory: 4608K',
+    '[    0.330000] Freeing unused initrd memory: 32768K',
+    '[    0.340000] Write protecting the kernel read-only data: 18432K',
+    '[    0.350000] Run /sbin/init as init process',
+  ];
+
+  lines.forEach((line) => {
+    const div = document.createElement('div');
+    div.className = 'kernel-line';
+    // Colorize: timestamps dim, [OK] green, errors red, warnings yellow
+    if (line.includes('up') || line.includes('registered') || line.includes('loaded') || line.includes('initialized') || line.includes('allocated')) {
+      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="ok">[OK]</span>';
+    } else if (line.includes('error') || line.includes('fail') || line.includes('Error')) {
+      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="fail">[FAIL]</span>';
+    } else if (line.includes('warning') || line.includes('Warning') || line.includes('deprecated')) {
+      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="warn">[WARN]</span>';
+    } else {
+      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>');
+    }
+    kernel.appendChild(div);
+  });
+
+  document.body.appendChild(kernel);
+
+  const lineEls = kernel.querySelectorAll('.kernel-line');
+  let lineIdx = 0;
+  function revealLine() {
+    if (lineIdx < lineEls.length) {
+      lineEls[lineIdx].classList.add('visible');
+      lineIdx++;
+      // Faster than BIOS — kernel scrolls fast
+      setTimeout(revealLine, 20 + Math.random() * 30);
+    } else {
+      setTimeout(() => {
+        kernel.style.transition = 'opacity 0.3s';
+        kernel.style.opacity = '0';
+        setTimeout(() => {
+          kernel.remove();
+          showSystemd();
+        }, 300);
+      }, 600);
+    }
+  }
+  revealLine();
+}
+
+// ── systemd services ──
+function showSystemd() {
+  const sd = document.createElement('div');
+  sd.className = 'systemd';
+  sd.style.display = 'block';
+
+  const services = [
+    { name: 'systemd-journald.service',    status: 'ok',   time: '0.034s',  text: 'Journal Service' },
+    { name: 'systemd-udevd.service',       status: 'ok',   time: '0.052s',  text: 'Device Manager' },
+    { name: 'systemd-modules-load.service',status: 'ok',   time: '0.018s',  text: 'Load Kernel Modules' },
+    { name: 'kmod-static-nodes.service',   status: 'ok',   time: '0.012s',  text: 'Create Static Device Nodes' },
+    { name: 'systemd-tmpfiles-setup.service', status: 'ok',time: '0.045s',  text: 'Create Volatile Files' },
+    { name: 'systemd-sysctl.service',      status: 'ok',   time: '0.020s',  text: 'Apply Kernel Variables' },
+    { name: 'systemd-random-seed.service', status: 'ok',   time: '0.031s',  text: 'Load/Save Random Seed' },
+    { name: 'systemd-timesyncd.service',   status: 'ok',   time: '0.067s',  text: 'Network Time Synchronization' },
+    { name: 'plymouth-start.service',      status: 'ok',   time: '0.089s',  text: 'Show Plymouth Boot Screen' },
+    { name: 'keyboard-setup.service',      status: 'ok',   time: '0.123s',  text: 'Set console keyboard layout' },
+    { name: 'networkd-dispatcher.service', status: 'ok',   time: '0.145s',  text: 'Network Dispatcher' },
+    { name: 'systemd-networkd-wait-online.service', status: 'ok', time: '0.234s', text: 'Wait for Network' },
+    { name: 'NetworkManager.service',      status: 'ok',   time: '0.156s',  text: 'Network Manager' },
+    { name: 'wpa_supplicant.service',      status: 'ok',   time: '0.089s',  text: 'WiFi Authentication' },
+    { name: 'systemd-resolved.service',    status: 'ok',   time: '0.045s',  text: 'DNS Resolver' },
+    { name: 'docker.service',              status: 'ok',   time: '0.345s',  text: 'Docker Application Container Engine' },
+    { name: 'containerd.service',          status: 'ok',   time: '0.267s',  text: 'Container Runtime' },
+    { name: 'cron.service',                status: 'ok',   time: '0.012s',  text: 'Periodic Command Scheduler' },
+    { name: 'rsyslog.service',             status: 'ok',   time: '0.034s',  text: 'System Logging' },
+    { name: 'ssh.service',                 status: 'ok',   time: '0.078s',  text: 'OpenBSD Secure Shell Server' },
+    { name: 'apache2.service',             status: 'ok',   time: '0.123s',  text: 'Apache HTTP Server' },
+    { name: 'cloudflared.service',         status: 'ok',   time: '0.234s',  text: 'Cloudflare Tunnel' },
+    { name: 'postgresql.service',          status: 'ok',   time: '0.456s',  text: 'PostgreSQL RDBMS' },
+    { name: 'redis-server.service',        status: 'ok',   time: '0.089s',  text: 'Redis In-Memory Data Store' },
+    { name: 'ollama.service',              status: 'ok',   time: '0.567s',  text: 'Ollama LLM Server' },
+    { name: 'hermes-agent.service',        status: 'ok',   time: '0.345s',  text: 'Hermes AI Agent' },
+    { name: 'gdm.service',                 status: 'ok',   time: '0.234s',  text: 'GNOME Display Manager' },
+    { name: 'gpu-manager.service',         status: 'ok',   time: '0.156s',  text: 'NVIDIA GPU Manager' },
+    { name: 'bluetooth.service',           status: 'warn', time: '0.089s',  text: 'Bluetooth Service (no adapter found)' },
+    { name: 'speech-dispatcherd.service',  status: 'warn', time: '0.045s',  text: 'Speech Dispatcher (disabled)' },
+    { name: 'fwupd.service',               status: 'ok',   time: '0.123s',  text: 'Firmware Update Daemon' },
+    { name: 'udisks2.service',             status: 'ok',   time: '0.067s',  text: 'Disk Management' },
+    { name: 'polkit.service',              status: 'ok',   time: '0.034s',  text: 'Authorization Manager' },
+    { name: 'colord.service',              status: 'ok',   time: '0.056s',  text: 'Color Manager' },
+    { name: 'accounts-daemon.service',     status: 'ok',   time: '0.078s',  text: 'Account Service' },
+    { name: 'switcheroo-control.service',  status: 'ok',   time: '0.023s',  text: 'Graphics Switcher' },
+    { name: 'kerneloops.service',          status: 'ok',   time: '0.012s',  text: 'Kernel Oops Tracker' },
+    { name: 'thermald.service',            status: 'ok',   time: '0.045s',  text: 'Thermal Daemon' },
+    { name: 'powerd.service',              status: 'ok',   time: '0.034s',  text: 'Power Management' },
+    { name: 'systemd-user-sessions.service', status: 'ok',time: '0.012s',  text: 'User Session Manager' },
+    { name: 'systemd-logind.service',      status: 'ok',   time: '0.056s',  text: 'Login Service' },
+    { name: 'user@1000.service',           status: 'ok',   time: '0.234s',  text: 'User Manager for UID 1000' },
+    { name: 'hodc-desktop.service',        status: 'ok',   time: '0.456s',  text: 'HODC Desktop Environment' },
+    { name: 'hodc-network.service',        status: 'ok',   time: '0.123s',  text: 'HODC Network Configuration' },
+    { name: 'hodc-audio.service',          status: 'ok',   time: '0.067s',  text: 'HODC Audio Pipeline' },
+  ];
+
+  let html = '<div style="margin-bottom:12px;font-size:16px;font-weight:bold;color:#00ff41;text-shadow:0 0 6px rgba(0,255,65,0.4)">[  OK  ] Started HODC Desktop Boot Sequence</div>';
+  html += '<div style="margin-bottom:8px;color:#006600">Activating services...</div>';
+  html += '<div style="margin-bottom:4px;color:#006600">    JOB    UNIT                       TYPE   STATE  TIME</div>';
+  html += '<div style="margin-bottom:8px"></div>';
+
+  services.forEach(svc => {
+    const statusClass = svc.status === 'ok' ? 'ok' : (svc.status === 'warn' ? 'warn' : 'fail');
+    const statusText = svc.status === 'ok' ? '[  OK  ]' : (svc.status === 'warn' ? '[ WARN ]' : '[FAILED]');
+    const padding = ' '.repeat(Math.max(0, 40 - svc.name.length));
+    html += `<div class="sd-line"><span class="${statusClass}">${statusText}</span> Started ${svc.name}${padding} <span class="dim">${svc.time}</span>  ${svc.text}</div>`;
+  });
+
+  html += '<div class="sd-line" style="margin-top:12px"></div>';
+  html += '<div class="sd-line"><span class="ok">[  OK  ]</span> Reached target Multi-User System</div>';
+  html += '<div class="sd-line"><span class="ok">[  OK  ]</span> Reached target Graphical Interface</div>';
+  html += '<div class="sd-line" style="margin-top:12px"></div>';
+  html += '<div class="sd-line"><span class="dim">System boot completed in 3.847s</span></div>';
+  html += '<div class="sd-line"><span class="dim">Starting HODC Desktop Environment...</span></div>';
+
+  sd.innerHTML = html;
+  document.body.appendChild(sd);
+
+  const lineEls = sd.querySelectorAll('.sd-line');
+  let lineIdx = 0;
+  function revealLine() {
+    if (lineIdx < lineEls.length) {
+      lineEls[lineIdx].classList.add('visible');
+      lineIdx++;
+      setTimeout(revealLine, 25 + Math.random() * 35);
+    } else {
+      setTimeout(() => {
+        sd.style.transition = 'opacity 0.4s';
+        sd.style.opacity = '0';
+        setTimeout(() => {
+          sd.remove();
+          showSplash();
+        }, 400);
+      }, 800);
+    }
+  }
+  revealLine();
+}
+
+function showSplash() {
+  const splash = document.createElement('div');
+  splash.className = 'splash';
+  splash.style.display = 'flex';
+  splash.innerHTML = `
+    <div class="splash-logo">HODC</div>
+    <div class="splash-dots">
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+    </div>
+    <div style="font-size:12px;color:#444;margin-top:10px;opacity:0;animation:splashDotsIn 0.5s ease-out 1.5s forwards">
+      Loading desktop environment...
+    </div>
+  `;
+  document.body.appendChild(splash);
+
+  // After ~3.5s, fade splash and restore desktop
+  setTimeout(() => {
+    splash.style.transition = 'opacity 0.5s';
+    splash.style.opacity = '0';
+    setTimeout(() => {
+      splash.remove();
+      restoreDesktop();
+    }, 500);
+  }, 3500);
+}
+
+function restoreDesktop() {
+  // Restore visibility
+  const wrap = document.querySelector('.wallpaper');
+  const topbar = document.querySelector('.topbar');
+  const dock = document.querySelector('.dock');
+  const desktop = document.getElementById('desktop');
+
+  [wrap, topbar, dock, desktop].forEach(el => {
+    el.style.opacity = '';
+    el.style.transition = '';
+  });
+
+  // CRT power-on effect on the whole body
+  document.body.style.animation = 'crtOn 0.8s cubic-bezier(0.2,0.8,0.2,1)';
+
+  // Show welcome again
+  welcome.classList.remove('hidden');
+  document.body.style.overflow = '';
+
+  // Reset dock running states
+  document.querySelectorAll('.dock-item').forEach(el => {
+    el.classList.remove('running', 'active-window');
+  });
+
+  setTimeout(() => {
+    document.body.style.animation = '';
+  }, 800);
+}
+
+// ── Shutdown ──
+function doShutdown() {
+  Object.keys(openWindows).forEach(id => closeWin(id));
+  closeCalendar(); closeWifi(); closePower(); closeContextMenu();
+  welcome.classList.add('hidden');
+
+  const wrap = document.querySelector('.wallpaper');
+  const topbar = document.querySelector('.topbar');
+  const dock = document.querySelector('.dock');
+  const desktop = document.getElementById('desktop');
+  [topbar, dock, desktop, wrap].forEach(el => {
+    el.style.transition = 'opacity 0.3s ease-in';
+    el.style.opacity = '0';
+  });
+
+  setTimeout(() => {
+    // CRT off
+    setTimeout(() => {
+      const overlay = document.createElement('div');
+      overlay.className = 'boot-overlay';
+      overlay.style.background = '#000';
+      overlay.style.cursor = 'pointer';
+      overlay.innerHTML = `
+        <div style="font-size:14px;color:#333;margin-bottom:8px">Systeem is afgesloten</div>
+        <div style="font-size:12px;color:#222">Klik om op te starten</div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', () => {
+        overlay.remove();
+        doReboot();
+      });
+    }, 600);
+  }, 350);
+}
+
+// ── Context Menu ──
+let ctxMenu = null;
+
+function closeContextMenu() {
+  if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; }
+}
+
+function showContextMenu(x, y) {
+  closeContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+
+  // Build menu items
+  const items = [
+    { icon: '🏠', label: 'Open HuisKompas', action: () => openApp('huiskompas') },
+    { icon: '📰', label: 'Open Nieuws', action: () => openApp('news') },
+    { icon: '🎵', label: 'Open Muziek', action: () => openApp('music') },
+    { sep: true },
+    { icon: '⊞', label: 'Toon alle apps', action: () => pulseDock() },
+    { sep: true },
+    { icon: '🖼️', label: 'Achtergrond wijzigen', action: () => cycleWallpaper() },
+    { sep: true },
+    { icon: 'ℹ️', label: 'Over HODC Desktop', action: () => showAbout() },
+  ];
+
+  items.forEach(item => {
+    if (item.sep) {
+      const sep = document.createElement('div');
+      sep.className = 'ctx-sep';
+      menu.appendChild(sep);
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'ctx-item';
+    el.innerHTML = `<span class="ctx-icon">${item.icon}</span><span class="ctx-label">${item.label}</span>`;
+    el.addEventListener('click', () => { item.action(); closeContextMenu(); });
+    menu.appendChild(el);
+  });
+
+  // Position — keep within viewport
+  document.body.appendChild(menu);
+  const rect = menu.getBoundingClientRect();
+  let mx = x, my = y;
+  if (mx + rect.width > window.innerWidth) mx = window.innerWidth - rect.width - 4;
+  if (my + rect.height > window.innerHeight) my = window.innerHeight - rect.height - 4;
+  menu.style.left = mx + 'px';
+  menu.style.top = my + 'px';
+  ctxMenu = menu;
+}
+
+// Right-click on desktop area (not on windows or dock)
+document.addEventListener('contextmenu', (e) => {
+  // Allow context menu only on desktop background, wallpaper, or welcome
+  const target = e.target;
+  const onDesktop = target.classList.contains('desktop') ||
+                    target.classList.contains('wallpaper') ||
+                    target.classList.contains('welcome') ||
+                    target.closest('.desktop-icons') ||
+                    (target.id === 'desktop');
+  // Don't interfere with windows or dock
+  if (target.closest('.win') || target.closest('.dock') || target.closest('.topbar')) {
+    return; // Let browser handle it (or suppress)
+  }
+  if (onDesktop) {
+    e.preventDefault();
+    showContextMenu(e.clientX, e.clientY);
+  }
+});
+
+// Close context menu on any left click or escape
+document.addEventListener('click', (e) => {
+  if (ctxMenu && !ctxMenu.contains(e.target)) closeContextMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeContextMenu();
+});
+
+// ── Helpers for context menu actions ──
+function pulseDock() {
+  document.querySelectorAll('.dock-item').forEach((item, i) => {
+    setTimeout(() => {
+      item.style.transform = 'scale(1.15)';
+      setTimeout(() => item.style.transform = '', 200);
+    }, i * 40);
+  });
+}
+
+const wallpapers = [
+  'radial-gradient(ellipse at 70% 20%, rgba(233,84,32,0.15) 0%, transparent 50%), radial-gradient(ellipse at 30% 80%, rgba(119,33,111,0.3) 0%, transparent 50%), linear-gradient(135deg, #2C001E 0%, #4A0E3A 40%, #1a1a2e 100%)',
+  'radial-gradient(ellipse at 20% 30%, rgba(0,217,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(108,92,231,0.2) 0%, transparent 50%), linear-gradient(135deg, #0a1929 0%, #0d1b2a 40%, #1b263b 100%)',
+  'radial-gradient(ellipse at 50% 50%, rgba(233,84,32,0.08) 0%, transparent 60%), linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+  'radial-gradient(ellipse at 40% 60%, rgba(76,175,80,0.1) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(255,152,0,0.08) 0%, transparent 50%), linear-gradient(135deg, #1b3a1b 0%, #2d4a2d 40%, #1a2e1a 100%)',
+];
+let wallpaperIndex = 0;
+function cycleWallpaper() {
+  wallpaperIndex = (wallpaperIndex + 1) % wallpapers.length;
+  document.querySelector('.wallpaper').style.background = wallpapers[wallpaperIndex];
+}
+
+function showAbout() {
+  // Create a simple about window
+  if (openWindows['about']) { focusWindow('about'); return; }
+  welcome.classList.add('hidden');
+
+  const win = document.createElement('div');
+  win.className = 'win';
+  win.id = 'win-about';
+  win.style.left = '50%';
+  win.style.top = '50%';
+  win.style.transform = 'translate(-50%, -50%)';
+  win.style.width = '380px';
+  win.style.height = 'auto';
+  win.style.minHeight = '220px';
+  win.style.zIndex = ++zIndex;
+  win.innerHTML = `
+    <div class="win-header">
+      <div class="win-controls">
+        <button class="win-btn close" onclick="closeAbout()"></button>
+        <button class="win-btn min"></button>
+        <button class="win-btn max"></button>
+      </div>
+      <div class="win-title">ℹ️ Over HODC Desktop</div>
+      <div class="win-spacer"></div>
+    </div>
+    <div class="win-body" style="background:#2d2d2d;padding:24px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:8px">🖥️</div>
+      <div style="font-size:1.2rem;font-weight:600;margin-bottom:6px;color:var(--ubuntu-orange)">HODC Desktop</div>
+      <div style="font-size:0.85rem;color:var(--dim);line-height:1.6;margin-bottom:12px">
+        Pieter's Workspace — Ubuntu/GNOME-stijl desktop environment.<br>
+        Tools, data & muziek. Eén plek, geen frills, wel karakter.
+      </div>
+      <div style="font-size:0.75rem;color:var(--dim);border-top:1px solid rgba(255,255,255,0.06);padding-top:12px">
+        Pieter Theijssen · Groningen · 2026
+      </div>
+    </div>
+  `;
+  makeDraggable(win);
+  win.addEventListener('mousedown', () => {
+    win.style.zIndex = ++zIndex;
+  });
+  desktop.appendChild(win);
+  openWindows['about'] = { el: win, minimized: false, maximized: false, prevRect: null };
+}
+
+function closeAbout() {
+  const w = openWindows['about'];
+  if (!w) return;
+  w.el.classList.add('closing');
+  setTimeout(() => {
+    w.el.remove();
+    delete openWindows['about'];
+    if (Object.keys(openWindows).length === 0) welcome.classList.remove('hidden');
+  }, 200);
+}
+
+// ── First boot: run boot sequence on every visit ──
+(function bootOnLoad() {
+  // Hide desktop elements immediately — boot sequence will restore them
+  const wrap = document.querySelector('.wallpaper');
+  const topbar = document.querySelector('.topbar');
+  const dock = document.querySelector('.dock');
+  const desktopEl = document.getElementById('desktop');
+  [wrap, topbar, dock, desktopEl].forEach(el => {
+    if (el) el.style.opacity = '0';
+  });
+  welcome.classList.add('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Start boot sequence after a brief black screen
+  setTimeout(() => {
+    showBIOS();
+  }, 400);
+})();
+</script>
+
+</body>
+</html>

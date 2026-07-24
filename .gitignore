@@ -1,0 +1,21 @@
+# Backups
+*.bak.*
+*.bak
+
+# MP3 files (too large for git)
+*.mp3
+
+# Adminer
+adminer.php
+
+# Bootstrap dist (downloadable framework, not our code)
+bootstrap/
+bootstrap-5.3.8-dist/
+bootstrap-5.3.8-dist.zip
+
+# Old pages
+2.html
+3.html
+
+# Encode/decode old version
+encode_decode_old.html
