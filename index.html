@@ -221,7 +221,9 @@ body {
 .win-spacer { width: 56px; flex-shrink: 0; }
 
 .win-body { flex: 1; overflow: hidden; position: relative; background: #fff; }
-.win-body iframe { width: 100%; height: 100%; border: none; display: block; }
+/* Iframe smaller dan win-body: laat rechts ruimte vrij van de resize-handles (.win-resize.e/ne/se),
+   zodat de scrollbar van de ingesloten site daar zichtbaar en klikbaar blijft. */
+.win-body iframe { width: calc(100% - 14px); height: 100%; border: none; display: block; }
 
 /* Loading overlay */
 .win-loading {
@@ -254,6 +256,22 @@ body {
   border-radius: 0; border: none;
 }
 .win.maximized .win-header { cursor: default; }
+
+/* ── Resize handles (8 grepvlakken langs de randen) ── */
+.win-resize { position: absolute; z-index: 10; touch-action: none; }
+.win-resize.n  { top: 0; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.win-resize.s  { bottom: 0; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.win-resize.w  { left: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.win-resize.e  { right: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.win-resize.nw { top: 0; left: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.win-resize.ne { top: 0; right: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.win-resize.sw { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.win-resize.se { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.win.maximized .win-resize { display: none; }
+
+/* Tijdens slepen/resizen: iframes mogen de muis niet opslokken */
+body.win-interacting iframe { pointer-events: none; }
+body.win-interacting { -webkit-user-select: none; user-select: none; }
 
 /* ── Taskbar indicators (bottom of dock for open windows) ── */
 .dock-item.active-window .dot-indicator {
@@ -643,6 +661,56 @@ body {
 @keyframes desktopFadeOut {
   to { opacity: 0; transform: scale(0.98); }
 }
+
+/* ── App Center (GNOME Show Applications) ── */
+.app-center {
+  position: fixed; inset: 0; z-index: 99990;
+  display: none; flex-direction: column; align-items: center;
+  background: rgba(8,8,12,0.6); backdrop-filter: blur(16px);
+  padding: 48px 24px 40px; overflow-y: auto;
+}
+.app-center.open { display: flex; }
+.app-center-inner { width: 100%; max-width: 1020px; animation: appCenterIn 0.25s ease-out; }
+@keyframes appCenterIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.app-search {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 26px; padding: 11px 20px; margin-bottom: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.app-search input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: #fff; font-size: 1rem; font-family: inherit;
+}
+.app-search input::placeholder { color: rgba(255,255,255,0.4); }
+.app-search .search-close { cursor: pointer; opacity: 0.6; font-size: 1.05rem; transition: opacity 0.15s, transform 0.15s; }
+.app-search .search-close:hover { opacity: 1; transform: rotate(90deg); }
+.app-cat {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--dim); margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.app-cat::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+.app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+.app-card {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 16px 12px 12px; text-align: center; cursor: pointer;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.app-card:hover {
+  background: rgba(255,255,255,0.1); border-color: var(--ubuntu-orange);
+  transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.app-card .app-ico { font-size: 2rem; line-height: 1.2; margin-bottom: 8px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
+.app-card .app-name { font-size: 0.85rem; font-weight: 600; color: #fff; }
+.app-card .app-desc { font-size: 0.68rem; color: var(--dim); margin-top: 3px; line-height: 1.35; min-height: 2.6em; }
+.app-card .app-url { font-size: 0.6rem; color: rgba(255,255,255,0.35); margin-top: 7px; font-family: 'SF Mono','Fira Code',monospace; word-break: break-all; }
+.app-card .app-ext { display: inline-block; margin-top: 7px; font-size: 0.6rem; color: var(--ubuntu-orange); border: 1px solid rgba(233,84,32,0.45); border-radius: 10px; padding: 2px 9px; }
+.app-card.hidden-card { display: none; }
+@media (max-width: 640px) {
+  .app-center { padding: 32px 14px 24px; }
+  .app-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -699,6 +767,12 @@ body {
     <div class="dock-icon">🚗</div>
     <div class="dock-tooltip">Kenteken — RDW voertuiginfo</div>
   </div>
+  <div class="dock-item" data-app="bussie" data-url="https://bussie.hodc.nl" data-icon="🚌" data-title="Bussie">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">🚌</div>
+    <div class="dock-tooltip">Bussie — Real-time buskaart Groningen</div>
+  </div>
+
   <div class="dock-item" data-app="news" data-url="https://news.hodc.nl" data-icon="📰" data-title="Nieuws">
     <div class="dot-indicator"></div>
     <div class="dock-icon">📰</div>
@@ -725,6 +799,12 @@ body {
     <div class="dock-icon">🎵</div>
     <div class="dock-tooltip">Muziek — Pieter Theijssen</div>
   </div>
+  <div class="dock-sep"></div>
+  <div class="dock-item" id="show-all-apps" title="Toon alle apps" style="cursor:pointer">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">⊞</div>
+    <div class="dock-tooltip">Toon alle apps — Alle subdomeinen</div>
+  </div>
 </nav>
 
 <!-- ═══ Desktop ═══ -->
@@ -746,8 +826,24 @@ body {
     <div class="dt-icon" onclick="openApp('news')">
       <div class="icon">📰</div><div class="label">Nieuws</div>
     </div>
+    <div class="dt-icon" onclick="openApp('bussie')">
+      <div class="icon">🚌</div><div class="label">Bussie</div>
+    </div>
+
   </div>
 
+</div>
+
+<!-- ═══ App Center (alle subdomeinen) ═══ -->
+<div class="app-center" id="app-center">
+  <div class="app-center-inner">
+    <div class="app-search">
+      <span>🔍</span>
+      <input type="text" id="app-search-input" placeholder="Zoek applicaties..." autocomplete="off">
+      <span class="search-close" id="app-center-close" title="Sluiten">✕</span>
+    </div>
+    <div id="app-center-cats"></div>
+  </div>
 </div>
 
 <script>
@@ -802,7 +898,7 @@ function openApp(appId) {
   }
 
   // Mark dock item as running
-  app.el.classList.add('running');
+  if (app.el) app.el.classList.add('running');
 
   // Create window
   const win = document.createElement('div');
@@ -837,7 +933,7 @@ function openApp(appId) {
         <div class="win-title">🎵 Muziek — Pieter Theijssen</div>
         <div class="win-spacer"></div>
       </div>
-      <div class="win-body" style="background:#2d2d2d;padding:16px 20px">
+      <div class="win-body" style="background:#2d2d2d;padding:16px 20px;overflow-y:auto">
         <div class="track" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
           <div style="flex:0 0 160px"><div style="font-size:0.85rem;font-weight:500">COVID Cure</div><div style="font-size:0.7rem;color:var(--dim);margin-top:2px">Pieter Theijssen</div></div>
           <audio src="/COVID_Cure_by_Pieter_Theijssen.mp3" controls preload="none" style="flex:1;height:32px;filter:invert(1) hue-rotate(180deg) sepia(0.15) brightness(0.9)"></audio>
@@ -874,8 +970,9 @@ function openApp(appId) {
     setTimeout(() => loading.classList.add('hidden'), 5000);
   }
 
-  // Drag functionality
+  // Drag + resize functionality
   makeDraggable(win);
+  makeResizable(win, appId);
 
   // Focus on click
   win.addEventListener('mousedown', () => focusWindow(appId));
@@ -896,14 +993,14 @@ function focusWindow(appId) {
 
   // Update dock active state
   document.querySelectorAll('.dock-item').forEach(d => d.classList.remove('active-window'));
-  if (apps[appId]) apps[appId].el.classList.add('active-window');
+  if (apps[appId] && apps[appId].el) apps[appId].el.classList.add('active-window');
 }
 
 function closeWin(appId) {
   const w = openWindows[appId];
   if (!w) return;
   w.el.classList.add('closing');
-  if (apps[appId]) apps[appId].el.classList.remove('running', 'active-window');
+  if (apps[appId] && apps[appId].el) apps[appId].el.classList.remove('running', 'active-window');
   setTimeout(() => {
     w.el.remove();
     delete openWindows[appId];
@@ -963,6 +1060,7 @@ function makeDraggable(win) {
     startLeft = parseInt(win.style.left);
     startTop = parseInt(win.style.top);
     header.style.cursor = 'grabbing';
+    document.body.classList.add('win-interacting');
     e.preventDefault();
   });
 
@@ -982,6 +1080,7 @@ function makeDraggable(win) {
     if (isDragging) {
       isDragging = false;
       header.style.cursor = 'grab';
+      document.body.classList.remove('win-interacting');
     }
   });
 
@@ -1011,6 +1110,74 @@ function makeDraggable(win) {
   document.addEventListener('touchend', () => { isDragging = false; });
 }
 
+// ── Resizing ──
+const MIN_W = 320, MIN_H = 180;
+
+function makeResizable(win, appId) {
+  ['n','s','w','e','nw','ne','sw','se'].forEach(dir => {
+    const handle = document.createElement('div');
+    handle.className = 'win-resize ' + dir;
+    win.appendChild(handle);
+
+    handle.addEventListener('pointerdown', (e) => {
+      if (win.classList.contains('maximized')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      focusWindow(appId);
+      handle.setPointerCapture(e.pointerId);
+      document.body.classList.add('win-interacting');
+
+      const dRect = desktop.getBoundingClientRect();
+      const wRect = win.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      const startLeft = wRect.left - dRect.left;
+      const startTop = wRect.top - dRect.top;
+      const startW = wRect.width, startH = wRect.height;
+
+      // Pin auto-sized vensters (muziek) op hun huidige maat
+      win.style.width = startW + 'px';
+      win.style.height = startH + 'px';
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        let left = startLeft, top = startTop, w = startW, h = startH;
+
+        if (dir.includes('e')) w = startW + dx;
+        if (dir.includes('s')) h = startH + dy;
+        if (dir.includes('w')) { w = startW - dx; left = startLeft + dx; }
+        if (dir.includes('n')) { h = startH - dy; top = startTop + dy; }
+
+        // Minimum-maat: houd de tegenoverliggende rand op zijn plek
+        if (w < MIN_W) { if (dir.includes('w')) left = startLeft + startW - MIN_W; w = MIN_W; }
+        if (h < MIN_H) { if (dir.includes('n')) top = startTop + startH - MIN_H; h = MIN_H; }
+
+        // Binnen het bureaublad houden
+        if (left < 0) { w += left; left = 0; }
+        if (top < 0) { h += top; top = 0; }
+        if (left + w > dRect.width) w = dRect.width - left;
+        if (top + h > dRect.height) h = dRect.height - top;
+        w = Math.max(MIN_W, w); h = Math.max(MIN_H, h);
+
+        win.style.left = left + 'px';
+        win.style.top = top + 'px';
+        win.style.width = w + 'px';
+        win.style.height = h + 'px';
+      };
+
+      const onUp = () => {
+        document.body.classList.remove('win-interacting');
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        handle.removeEventListener('pointercancel', onUp);
+      };
+
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+      handle.addEventListener('pointercancel', onUp);
+    });
+  });
+}
+
 // ── Dock click handlers ──
 document.querySelectorAll('.dock-item[data-app]').forEach(el => {
   el.addEventListener('click', (e) => {
@@ -1019,18 +1186,95 @@ document.querySelectorAll('.dock-item[data-app]').forEach(el => {
   });
 });
 
+// ── App Center: catalogus van alle subdomeinen ──
+const appCatalog = [
+  // Financiën
+  { id:'huiskompas',  icon:'🏠', title:'HuisKompas',     desc:'Woonkosten calculator',      cat:'Financiën',       external:false },
+  { id:'rente',       icon:'🏦', title:'Hypotheekrente', desc:'Actuele rentestanden',        cat:'Financiën',       external:false },
+  { id:'salaris',     icon:'💰', title:'Salaris',        desc:'Bruto-netto berekening',      cat:'Financiën',       external:false },
+  { id:'boekhouden',  icon:'📒', title:'Boekhouden',     desc:'Huishoudboekje',              cat:'Financiën',       external:true },
+  // Data & Info
+  { id:'rdw',         icon:'🚗', title:'Kenteken',       desc:'RDW voertuiginformatie',      cat:'Data & Info',     external:false },
+  { id:'bussie',      icon:'🚌', title:'Bussie',         desc:'Real-time buskaart Groningen',cat:'Data & Info',     external:false },
+  { id:'news',        icon:'📰', title:'Nieuws',         desc:'Dagelijks nieuwsoverzicht',   cat:'Data & Info',     external:false },
+  { id:'pool',        icon:'🎱', title:'Pool Guide',     desc:'Competitiebeheer',            cat:'Data & Info',     external:false },
+  { id:'crypto',      icon:'🔐', title:'Crypto',         desc:'Encrypt/decrypt tool',        cat:'Data & Info',     external:false },
+  { id:'villaayamonte',icon:'🏖️', title:'Villa Ayamonte',desc:'Vakantiehuis',               cat:'Data & Info',     external:false },
+  { id:'woz',         icon:'🏘️', title:'WOZ',           desc:'Waardebepaling API',          cat:'Data & Info',     external:true },
+  // Media & Creatief
+  { id:'music',       icon:'🎵', title:'Muziek',         desc:'Pieter Theijssen',            cat:'Media & Creatief',external:false },
+  { id:'compilatie',  icon:'🖼️', title:'Compilatie',     desc:'Photo Mosaic Creator',        cat:'Media & Creatief',external:false },
+  { id:'simulatie',   icon:'🎬', title:'Simulatie',      desc:'Media & simulaties',          cat:'Media & Creatief',external:false },
+  { id:'gen',         icon:'🎨', title:'Gen',            desc:'AI beeldgeneratie',            cat:'Media & Creatief',external:true },
+];
+
+// Register non-dock apps so openApp works for every catalog entry
+appCatalog.forEach(a => {
+  if (!apps[a.id]) {
+    const url = (a.id === 'crypto') ? 'https://hodc.nl/encode_decode.html' : 'https://' + a.id + '.hodc.nl';
+    apps[a.id] = { url, icon: a.icon, title: a.title, external: a.external, el: null };
+  }
+});
+
+function appUrlLabel(a) {
+  if (a.id === 'music') return 'lokaal (desktop)';
+  if (a.id === 'crypto') return 'hodc.nl/encode_decode.html';
+  return a.id + '.hodc.nl';
+}
+
+function renderAppCenter(filter) {
+  const container = document.getElementById('app-center-cats');
+  if (!container) return;
+  filter = (filter || '').toLowerCase().trim();
+  const cats = {};
+  appCatalog.forEach(a => {
+    if (filter && !(a.title + ' ' + a.desc + ' ' + a.cat).toLowerCase().includes(filter)) return;
+    (cats[a.cat] = cats[a.cat] || []).push(a);
+  });
+  let html = '';
+  Object.keys(cats).forEach(cat => {
+    html += '<div class="app-cat">' + cat + '</div><div class="app-grid">';
+    cats[cat].forEach(a => {
+      html += '<div class="app-card" onclick="openApp(\'' + a.id + '\')" title="' + (a.external ? 'Opent in nieuw tabblad: ' : 'Open: ') + appUrlLabel(a) + '">' +
+        '<div class="app-ico">' + a.icon + '</div>' +
+        '<div class="app-name">' + a.title + '</div>' +
+        '<div class="app-desc">' + a.desc + '</div>' +
+        '<div class="app-url">' + appUrlLabel(a) + '</div>' +
+        (a.external ? '<div class="app-ext">↗ nieuw tabblad</div>' : '') +
+        '</div>';
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html || '<div style="text-align:center;color:var(--dim);padding:48px 0">Geen applicaties gevonden</div>';
+}
+
+function showAppCenter() {
+  renderAppCenter('');
+  document.getElementById('app-center').classList.add('open');
+  const inp = document.getElementById('app-search-input');
+  inp.value = '';
+  setTimeout(() => inp.focus(), 60);
+}
+
+function hideAppCenter() {
+  document.getElementById('app-center').classList.remove('open');
+}
+
+document.getElementById('show-all-apps').addEventListener('click', () => {
+  const ac = document.getElementById('app-center');
+  if (ac.classList.contains('open')) hideAppCenter(); else showAppCenter();
+});
+document.getElementById('app-center-close').addEventListener('click', hideAppCenter);
+document.getElementById('app-search-input').addEventListener('input', e => renderAppCenter(e.target.value));
+document.getElementById('app-center').addEventListener('click', e => {
+  if (e.target.id === 'app-center') hideAppCenter();
+});
+
 // ── Activities toggle ──
 document.getElementById('activities').addEventListener('click', function() {
-  // Toggle: show all windows in overview, or restore
-  const wins = Object.values(openWindows);
-  if (wins.length === 0) return;
-  // Simple visual: pulse all dock items
-  document.querySelectorAll('.dock-item').forEach((item, i) => {
-    setTimeout(() => {
-      item.style.transform = 'scale(1.15)';
-      setTimeout(() => item.style.transform = '', 200);
-    }, i * 40);
-  });
+  // Open the app center overview (GNOME-style show applications)
+  const ac = document.getElementById('app-center');
+  if (ac.classList.contains('open')) hideAppCenter(); else showAppCenter();
 });
 
 // ── Clock click → Calendar popup ──
@@ -1376,7 +1620,7 @@ function suspendScreen() {
 function doReboot() {
   // Phase 1: Close all open windows
   Object.keys(openWindows).forEach(id => closeWin(id));
-  closeCalendar(); closeWifi(); closePower(); closeContextMenu();
+  closeCalendar(); closeWifi(); closePower(); closeContextMenu(); hideAppCenter();
   welcome.classList.add('hidden');
 
   // Phase 2: Fade desktop out
@@ -1527,231 +1771,10 @@ function showGRUB() {
       grub.style.opacity = '0';
       setTimeout(() => {
         grub.remove();
-        showKernel();
+        showSplash();
       }, 300);
     }
   }, 1000);
-}
-
-// ── Kernel boot (dmesg-style) ──
-function showKernel() {
-  const kernel = document.createElement('div');
-  kernel.className = 'kernel';
-  kernel.style.display = 'block';
-
-  const lines = [
-    '[    0.000000] Linux version 6.8.0-27-generic (buildd@hodc) (gcc 13.2.0) #1 SMP PREEMPT_DYNAMIC',
-    '[    0.000000] Command line: BOOT_IMAGE=/vmlinuz-6.8.0-27-generic root=/dev/nvme0n1p2 ro quiet splash',
-    '[    0.000000] Kernel-supported CPU: x86_64 (AMD Ryzen 5 5600X)',
-    '[    0.000000] BIOS-provided physical RAM map:',
-    '[    0.000000]   usable: 0x000000 - 0x0C000000 (3072MB)',
-    '[    0.000000]   usable: 0x1000000 - 0x3BFF00000 (15360MB)',
-    '[    0.000000]   usable: 0x3C0000000 - 0x7BFF00000 (16384MB)',
-    '[    0.000000] Memory: 49152MB available / 49152MB total',
-    '[    0.000000] Reserving 256MB for crashkernel',
-    '[    0.001234] ACPI: PM-Timer IO Port: 0x408',
-    '[    0.002345] smpboot: Allowing 12 CPUs, 6 cores / 12 threads',
-    '[    0.003456] CPU0: AMD Ryzen 5 5600X 6-Core Processor [MHz 3700 / Max 4650]',
-    '[    0.004567] CPU1: AMD Ryzen 5 5600X 6-Core Processor',
-    '[    0.005678] CPU2: AMD Ryzen 5 5600X 6-Core Processor',
-    '[    0.006789] CPU3: AMD Ryzen 5 5600X 6-Core Processor',
-    '[    0.007890] CPU4: AMD Ryzen 5 5600X 6-Core Processor',
-    '[    0.008901] CPU5: AMD Ryzen 5 5600X 6-Core Processor',
-    '[    0.010234] MCE: Machine Check Exception bank 0 initialized',
-    '[    0.012345] PCI: Using configuration type 1 for base access',
-    '[    0.015678] PCI: MMCONFIG for domain 0000 [bus 00-ff] at [mem 0xe0000000-0xefffffff]',
-    '[    0.020000] PCI: 00:01.0 PCI bridge to [bus 01]',
-    '[    0.022000] PCI: 00:02.0 VGA compatible controller: NVIDIA GA106 [GeForce RTX 3060]',
-    '[    0.025000] PCI: 00:08.0 Network controller: Intel Wi-Fi 6 AX200',
-    '[    0.028000] PCI: 00:14.0 USB controller: AMD FCH USB XHCI Controller',
-    '[    0.030000] PCI: 00:1b.0 Audio device: Realtek ALC892',
-    '[    0.035000] NVMe controller initialized: Samsung 980 PRO 1TB',
-    '[    0.040000] NVMe controller initialized: WD Black SN850 2TB',
-    '[    0.045000] scsi host0: nvme0n1 (Samsung 980 PRO)',
-    '[    0.048000] scsi host1: nvme1n1 (WD Black SN850)',
-    '[    0.052000] nvme nvme0: 1TB namespace allocated (nsid=1)',
-    '[    0.055000] nvme nvme1: 2TB namespace allocated (nsid=1)',
-    '[    0.060000] Block layer: bio-based queue initialized for nvme0n1',
-    '[    0.065000] Block layer: bio-based queue initialized for nvme1n1',
-    '[    0.070000] EXT4-fs (nvme0n1p2): mounted filesystem with ordered data mode',
-    '[    0.075000] ZFS: Loaded module v2.2.4-1ubuntu1',
-    '[    0.080000] ZFS: 2 pools available, 0 imported',
-    '[    0.085000] random: crng init done',
-    '[    0.090000] clocksource: tsc-early: mask verified',
-    '[    0.095000] Intel I225-V eth0: Link is up at 2500 Mbps',
-    '[    0.100000] Intel AX200 wlan0: Firmware loaded (version 72.659640.0)',
-    '[    0.105000] Logitech G915: USB HID keyboard registered',
-    '[    0.110000] Logitech G502: USB HID mouse registered',
-    '[    0.115000] Focusrite Solo: USB Audio device registered',
-    '[    0.120000] snd_hda_intel: Realtek ALC892 codec initialized',
-    '[    0.125000] nvidia: module loaded (version 550.120)',
-    '[    0.130000] nvidia-drm: loading kernel module',
-    '[    0.135000] [drm] Initialized nvidia-drm 550.120 for NVIDIA GA106',
-    '[    0.140000] [drm] HDMI-A-1: connected (1920x1080@60Hz)',
-    '[    0.145000] [drm] DP-1: connected (2560x1440@144Hz)',
-    '[    0.150000] fbcon: Deferred console takeover',
-    '[    0.155000] systemd[1]: System Management Mode initialized',
-    '[    0.160000] NET: Registered PF_INET protocol family',
-    '[    0.165000] NET: Registered PF_INET6 protocol family',
-    '[    0.170000] TCP: cubic registered',
-    '[    0.175000] NET: Registered PF_PACKET protocol family',
-    '[    0.180000] VFS: Disk quotas dquot_6.6.0 registered',
-    '[    0.185000] Key type ._fscrypt registered',
-    '[    0.190000] AppArmor: AppArmor initialized',
-    '[    0.195000] Key type encrypted registered',
-    '[    0.200000] Loading iSCSI Transport Layer v2.0-870',
-    '[    0.210000] Loading XFS filesystem driver',
-    '[    0.220000] Loading Btrfs filesystem driver',
-    '[    0.230000] zswap: loaded using pool lzo/zsmalloc',
-    '[    0.240000] sched_clock: Marking stable (240000000 ns)',
-    '[    0.250000] PM: Running suspend self-tests',
-    '[    0.260000] registered taskstats version 1',
-    '[    0.270000] Loading compiled-in X.509 certificates',
-    '[    0.280000] Loaded UEFI: loaded kernel keys',
-    '[    0.290000] ima: No TPM chip found, activating TPM-bypass!',
-    '[    0.300000] Loading user-specified initrd',
-    '[    0.310000] initrd loaded: /boot/initrd.img-6.8.0-27-generic',
-    '[    0.320000] Freeing unused kernel memory: 4608K',
-    '[    0.330000] Freeing unused initrd memory: 32768K',
-    '[    0.340000] Write protecting the kernel read-only data: 18432K',
-    '[    0.350000] Run /sbin/init as init process',
-  ];
-
-  lines.forEach((line) => {
-    const div = document.createElement('div');
-    div.className = 'kernel-line';
-    // Colorize: timestamps dim, [OK] green, errors red, warnings yellow
-    if (line.includes('up') || line.includes('registered') || line.includes('loaded') || line.includes('initialized') || line.includes('allocated')) {
-      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="ok">[OK]</span>';
-    } else if (line.includes('error') || line.includes('fail') || line.includes('Error')) {
-      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="fail">[FAIL]</span>';
-    } else if (line.includes('warning') || line.includes('Warning') || line.includes('deprecated')) {
-      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>') + ' <span class="warn">[WARN]</span>';
-    } else {
-      div.innerHTML = line.replace(/(\[.*?\])/, '<span class="dim">$1</span>');
-    }
-    kernel.appendChild(div);
-  });
-
-  document.body.appendChild(kernel);
-
-  const lineEls = kernel.querySelectorAll('.kernel-line');
-  let lineIdx = 0;
-  function revealLine() {
-    if (lineIdx < lineEls.length) {
-      lineEls[lineIdx].classList.add('visible');
-      lineIdx++;
-      // Faster than BIOS — kernel scrolls fast
-      setTimeout(revealLine, 20 + Math.random() * 30);
-    } else {
-      setTimeout(() => {
-        kernel.style.transition = 'opacity 0.3s';
-        kernel.style.opacity = '0';
-        setTimeout(() => {
-          kernel.remove();
-          showSystemd();
-        }, 300);
-      }, 600);
-    }
-  }
-  revealLine();
-}
-
-// ── systemd services ──
-function showSystemd() {
-  const sd = document.createElement('div');
-  sd.className = 'systemd';
-  sd.style.display = 'block';
-
-  const services = [
-    { name: 'systemd-journald.service',    status: 'ok',   time: '0.034s',  text: 'Journal Service' },
-    { name: 'systemd-udevd.service',       status: 'ok',   time: '0.052s',  text: 'Device Manager' },
-    { name: 'systemd-modules-load.service',status: 'ok',   time: '0.018s',  text: 'Load Kernel Modules' },
-    { name: 'kmod-static-nodes.service',   status: 'ok',   time: '0.012s',  text: 'Create Static Device Nodes' },
-    { name: 'systemd-tmpfiles-setup.service', status: 'ok',time: '0.045s',  text: 'Create Volatile Files' },
-    { name: 'systemd-sysctl.service',      status: 'ok',   time: '0.020s',  text: 'Apply Kernel Variables' },
-    { name: 'systemd-random-seed.service', status: 'ok',   time: '0.031s',  text: 'Load/Save Random Seed' },
-    { name: 'systemd-timesyncd.service',   status: 'ok',   time: '0.067s',  text: 'Network Time Synchronization' },
-    { name: 'plymouth-start.service',      status: 'ok',   time: '0.089s',  text: 'Show Plymouth Boot Screen' },
-    { name: 'keyboard-setup.service',      status: 'ok',   time: '0.123s',  text: 'Set console keyboard layout' },
-    { name: 'networkd-dispatcher.service', status: 'ok',   time: '0.145s',  text: 'Network Dispatcher' },
-    { name: 'systemd-networkd-wait-online.service', status: 'ok', time: '0.234s', text: 'Wait for Network' },
-    { name: 'NetworkManager.service',      status: 'ok',   time: '0.156s',  text: 'Network Manager' },
-    { name: 'wpa_supplicant.service',      status: 'ok',   time: '0.089s',  text: 'WiFi Authentication' },
-    { name: 'systemd-resolved.service',    status: 'ok',   time: '0.045s',  text: 'DNS Resolver' },
-    { name: 'docker.service',              status: 'ok',   time: '0.345s',  text: 'Docker Application Container Engine' },
-    { name: 'containerd.service',          status: 'ok',   time: '0.267s',  text: 'Container Runtime' },
-    { name: 'cron.service',                status: 'ok',   time: '0.012s',  text: 'Periodic Command Scheduler' },
-    { name: 'rsyslog.service',             status: 'ok',   time: '0.034s',  text: 'System Logging' },
-    { name: 'ssh.service',                 status: 'ok',   time: '0.078s',  text: 'OpenBSD Secure Shell Server' },
-    { name: 'apache2.service',             status: 'ok',   time: '0.123s',  text: 'Apache HTTP Server' },
-    { name: 'cloudflared.service',         status: 'ok',   time: '0.234s',  text: 'Cloudflare Tunnel' },
-    { name: 'postgresql.service',          status: 'ok',   time: '0.456s',  text: 'PostgreSQL RDBMS' },
-    { name: 'redis-server.service',        status: 'ok',   time: '0.089s',  text: 'Redis In-Memory Data Store' },
-    { name: 'ollama.service',              status: 'ok',   time: '0.567s',  text: 'Ollama LLM Server' },
-    { name: 'hermes-agent.service',        status: 'ok',   time: '0.345s',  text: 'Hermes AI Agent' },
-    { name: 'gdm.service',                 status: 'ok',   time: '0.234s',  text: 'GNOME Display Manager' },
-    { name: 'gpu-manager.service',         status: 'ok',   time: '0.156s',  text: 'NVIDIA GPU Manager' },
-    { name: 'bluetooth.service',           status: 'warn', time: '0.089s',  text: 'Bluetooth Service (no adapter found)' },
-    { name: 'speech-dispatcherd.service',  status: 'warn', time: '0.045s',  text: 'Speech Dispatcher (disabled)' },
-    { name: 'fwupd.service',               status: 'ok',   time: '0.123s',  text: 'Firmware Update Daemon' },
-    { name: 'udisks2.service',             status: 'ok',   time: '0.067s',  text: 'Disk Management' },
-    { name: 'polkit.service',              status: 'ok',   time: '0.034s',  text: 'Authorization Manager' },
-    { name: 'colord.service',              status: 'ok',   time: '0.056s',  text: 'Color Manager' },
-    { name: 'accounts-daemon.service',     status: 'ok',   time: '0.078s',  text: 'Account Service' },
-    { name: 'switcheroo-control.service',  status: 'ok',   time: '0.023s',  text: 'Graphics Switcher' },
-    { name: 'kerneloops.service',          status: 'ok',   time: '0.012s',  text: 'Kernel Oops Tracker' },
-    { name: 'thermald.service',            status: 'ok',   time: '0.045s',  text: 'Thermal Daemon' },
-    { name: 'powerd.service',              status: 'ok',   time: '0.034s',  text: 'Power Management' },
-    { name: 'systemd-user-sessions.service', status: 'ok',time: '0.012s',  text: 'User Session Manager' },
-    { name: 'systemd-logind.service',      status: 'ok',   time: '0.056s',  text: 'Login Service' },
-    { name: 'user@1000.service',           status: 'ok',   time: '0.234s',  text: 'User Manager for UID 1000' },
-    { name: 'hodc-desktop.service',        status: 'ok',   time: '0.456s',  text: 'HODC Desktop Environment' },
-    { name: 'hodc-network.service',        status: 'ok',   time: '0.123s',  text: 'HODC Network Configuration' },
-    { name: 'hodc-audio.service',          status: 'ok',   time: '0.067s',  text: 'HODC Audio Pipeline' },
-  ];
-
-  let html = '<div style="margin-bottom:12px;font-size:16px;font-weight:bold;color:#00ff41;text-shadow:0 0 6px rgba(0,255,65,0.4)">[  OK  ] Started HODC Desktop Boot Sequence</div>';
-  html += '<div style="margin-bottom:8px;color:#006600">Activating services...</div>';
-  html += '<div style="margin-bottom:4px;color:#006600">    JOB    UNIT                       TYPE   STATE  TIME</div>';
-  html += '<div style="margin-bottom:8px"></div>';
-
-  services.forEach(svc => {
-    const statusClass = svc.status === 'ok' ? 'ok' : (svc.status === 'warn' ? 'warn' : 'fail');
-    const statusText = svc.status === 'ok' ? '[  OK  ]' : (svc.status === 'warn' ? '[ WARN ]' : '[FAILED]');
-    const padding = ' '.repeat(Math.max(0, 40 - svc.name.length));
-    html += `<div class="sd-line"><span class="${statusClass}">${statusText}</span> Started ${svc.name}${padding} <span class="dim">${svc.time}</span>  ${svc.text}</div>`;
-  });
-
-  html += '<div class="sd-line" style="margin-top:12px"></div>';
-  html += '<div class="sd-line"><span class="ok">[  OK  ]</span> Reached target Multi-User System</div>';
-  html += '<div class="sd-line"><span class="ok">[  OK  ]</span> Reached target Graphical Interface</div>';
-  html += '<div class="sd-line" style="margin-top:12px"></div>';
-  html += '<div class="sd-line"><span class="dim">System boot completed in 3.847s</span></div>';
-  html += '<div class="sd-line"><span class="dim">Starting HODC Desktop Environment...</span></div>';
-
-  sd.innerHTML = html;
-  document.body.appendChild(sd);
-
-  const lineEls = sd.querySelectorAll('.sd-line');
-  let lineIdx = 0;
-  function revealLine() {
-    if (lineIdx < lineEls.length) {
-      lineEls[lineIdx].classList.add('visible');
-      lineIdx++;
-      setTimeout(revealLine, 25 + Math.random() * 35);
-    } else {
-      setTimeout(() => {
-        sd.style.transition = 'opacity 0.4s';
-        sd.style.opacity = '0';
-        setTimeout(() => {
-          sd.remove();
-          showSplash();
-        }, 400);
-      }, 800);
-    }
-  }
-  revealLine();
 }
 
 function showSplash() {
@@ -1866,7 +1889,7 @@ function showContextMenu(x, y) {
     { icon: '📰', label: 'Open Nieuws', action: () => openApp('news') },
     { icon: '🎵', label: 'Open Muziek', action: () => openApp('music') },
     { sep: true },
-    { icon: '⊞', label: 'Toon alle apps', action: () => pulseDock() },
+    { icon: '⊞', label: 'Toon alle apps', action: () => showAppCenter() },
     { sep: true },
     { icon: '🖼️', label: 'Achtergrond wijzigen', action: () => cycleWallpaper() },
     { sep: true },
@@ -1922,7 +1945,7 @@ document.addEventListener('click', (e) => {
   if (ctxMenu && !ctxMenu.contains(e.target)) closeContextMenu();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeContextMenu();
+  if (e.key === 'Escape') { closeContextMenu(); hideAppCenter(); }
 });
 
 // ── Helpers for context menu actions ──
