@@ -971,7 +971,7 @@ function openApp(appId) {
   }
 
   // Drag + resize functionality
-  makeDraggable(win);
+  makeDraggable(win, appId);
   makeResizable(win, appId);
 
   // Focus on click
@@ -1046,10 +1046,17 @@ function maxWin(appId) {
 }
 
 // ── Dragging ──
-function makeDraggable(win) {
+function makeDraggable(win, appId) {
   const header = win.querySelector('.win-header');
   let isDragging = false;
   let startX, startY, startLeft, startTop;
+
+  if (appId) {
+    header.addEventListener('dblclick', (e) => {
+      if (e.target.classList.contains('win-btn')) return;
+      maxWin(appId);
+    });
+  }
 
   header.addEventListener('mousedown', (e) => {
     if (e.target.classList.contains('win-btn')) return;
