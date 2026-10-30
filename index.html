@@ -712,6 +712,8 @@ body.win-interacting { -webkit-user-select: none; user-select: none; }
   .app-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
 }
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6426090550720509"
+     crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -799,6 +801,16 @@ body.win-interacting { -webkit-user-select: none; user-select: none; }
     <div class="dock-icon">🎵</div>
     <div class="dock-tooltip">Muziek — Pieter Theijssen</div>
   </div>
+  <div class="dock-item" data-app="gotchi" data-url="https://gotchi.hodc.nl" data-icon="👾" data-title="Gotchi">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">👾</div>
+    <div class="dock-tooltip">Gotchi — Damagotchi & Managotchi</div>
+  </div>
+  <div class="dock-item" data-app="radio" data-url="https://radio.hodc.nl" data-icon="📻" data-title="Radio" data-external="true">
+    <div class="dot-indicator"></div>
+    <div class="dock-icon">📻</div>
+    <div class="dock-tooltip">Radio — Live streams, opent in nieuw tabblad</div>
+  </div>
   <div class="dock-sep"></div>
   <div class="dock-item" id="show-all-apps" title="Toon alle apps" style="cursor:pointer">
     <div class="dot-indicator"></div>
@@ -828,6 +840,9 @@ body.win-interacting { -webkit-user-select: none; user-select: none; }
     </div>
     <div class="dt-icon" onclick="openApp('bussie')">
       <div class="icon">🚌</div><div class="label">Bussie</div>
+    </div>
+    <div class="dt-icon" onclick="openApp('gotchi')">
+      <div class="icon">👾</div><div class="label">Gotchi</div>
     </div>
 
   </div>
@@ -1210,15 +1225,20 @@ const appCatalog = [
   { id:'woz',         icon:'🏘️', title:'WOZ',           desc:'Waardebepaling API',          cat:'Data & Info',     external:true },
   // Media & Creatief
   { id:'music',       icon:'🎵', title:'Muziek',         desc:'Pieter Theijssen',            cat:'Media & Creatief',external:false },
+  { id:'radio',       icon:'📻', title:'Radio',          desc:'Live radiostreams',           cat:'Media & Creatief',external:true  },
   { id:'compilatie',  icon:'🖼️', title:'Compilatie',     desc:'Photo Mosaic Creator',        cat:'Media & Creatief',external:false },
   { id:'simulatie',   icon:'🎬', title:'Simulatie',      desc:'Media & simulaties',          cat:'Media & Creatief',external:false },
   { id:'gen',         icon:'🎨', title:'Gen',            desc:'AI beeldgeneratie',            cat:'Media & Creatief',external:true },
+  // Games & Persoonlijk
+  { id:'gotchi',      icon:'👾', title:'Gotchi',         desc:'Damagotchi & Managotchi',      cat:'Games & Persoonlijk', external:false },
 ];
 
 // Register non-dock apps so openApp works for every catalog entry
 appCatalog.forEach(a => {
   if (!apps[a.id]) {
-    const url = (a.id === 'crypto') ? 'https://hodc.nl/encode_decode.html' : 'https://' + a.id + '.hodc.nl';
+    let url;
+    if (a.id === 'crypto') url = 'https://hodc.nl/encode_decode.html';
+    else url = 'https://' + a.id + '.hodc.nl';
     apps[a.id] = { url, icon: a.icon, title: a.title, external: a.external, el: null };
   }
 });
@@ -1226,6 +1246,7 @@ appCatalog.forEach(a => {
 function appUrlLabel(a) {
   if (a.id === 'music') return 'lokaal (desktop)';
   if (a.id === 'crypto') return 'hodc.nl/encode_decode.html';
+  if (a.id === 'radio') return 'radio.hodc.nl';
   return a.id + '.hodc.nl';
 }
 
